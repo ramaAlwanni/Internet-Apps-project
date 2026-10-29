@@ -14,7 +14,6 @@ const Header = () => {
 
     return (
         <header className="relative z-[500] w-full max-w-6xl mx-auto h-16 bg-[#df9fa8]/80 backdrop-blur-md rounded-full px-8 flex items-center justify-between border border-white/40 shadow-lg mb-8">
-            {/* اللوغو واسم المتجر */}
             <div
                 className="flex items-center gap-2 cursor-pointer"
                 onClick={() => navigate("/home")}
@@ -25,7 +24,6 @@ const Header = () => {
                 <h1 className="text-xl font-bold text-[#5c212c]">Dreamshop</h1>
             </div>
 
-            {/* روابط التنقل */}
             <nav className="flex items-center gap-8">
                 <button
                     onClick={() => navigate("/home")}
@@ -61,9 +59,7 @@ const Header = () => {
                 </button>
             </nav>
 
-            {/* قسم الإشعارات والمعلومات الشخصية */}
             <div className="flex items-center gap-4">
-                {/* حاوية زر الجرس والـ Dropdown مع تموضع نسبي */}
                 <div className="relative">
                     <button
                         type="button"
@@ -78,14 +74,12 @@ const Header = () => {
                         </span>
                     </button>
 
-                    {/* النافذة المنبثقة للإشعارات */}
                     <NotificationsDropdown
                         isOpen={isNotificationsOpen}
                         onClose={() => setIsNotificationsOpen(false)}
                     />
                 </div>
 
-                {/* معلومات المستخدم */}
                 <div className="flex items-center gap-2 text-[#5c212c] text-sm font-medium">
                     <span className="text-xs">👤</span>
                     <span>Hello, Razan</span>

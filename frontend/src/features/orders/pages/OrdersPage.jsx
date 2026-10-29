@@ -15,11 +15,9 @@ const OrdersPage = () => {
 
     return (
         <main className="min-h-screen w-full bg-metallic-shimmer py-8 px-4 md:px-12 flex flex-col items-center relative">
-            {/* الشريط العلوي الثابت */}
             <Header />
 
             <div className="w-full max-w-6xl mt-2">
-                {/* عنوان الصفحة */}
                 <div className="mb-6 px-2 flex items-center gap-2.5">
                     <ClipboardList className="w-6 h-6 text-[#5c212c]" />
                     <div>
@@ -32,13 +30,11 @@ const OrdersPage = () => {
                     </div>
                 </div>
 
-                {/* كارت الحاوية الكبير بعرض الصفحة */}
                 <div className="w-full bg-[#df9fa8]/50 backdrop-blur-md rounded-[36px] p-6 md:p-8 border border-white/40 shadow-2xl">
                     <OrdersList onSelectOrder={handleOpenModal} />
                 </div>
             </div>
 
-            {/* نافذة تفاصيل الطلب المنبثقة مع تغبيش الخلفية */}
             <OrderDetailsModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

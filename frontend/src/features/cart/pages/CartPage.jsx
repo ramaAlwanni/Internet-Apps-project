@@ -5,11 +5,11 @@ import { ShoppingCart } from 'lucide-react';
 const CartPage = () => {
   return (
     <main className="min-h-screen w-full bg-metallic-shimmer py-8 px-4 md:px-12 flex flex-col items-center">
-      {/* الشريط العلوي الثابت */}
+     
       <Header />
 
       <div className="w-full max-w-6xl mt-2">
-        {/* عنوان القسم والوصف */}
+        
         <div className="mb-6 px-2 flex items-center gap-2">
           <ShoppingCart className="w-6 h-6 text-[#5c212c]" />
           <div>
@@ -22,7 +22,7 @@ const CartPage = () => {
           </div>
         </div>
 
-        {/* عرض مكون السلة الرئيسي */}
+        
         <CartView />
       </div>
     </main>

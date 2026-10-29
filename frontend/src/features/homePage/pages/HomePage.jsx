@@ -9,11 +9,9 @@ const HomePage = () => {
 
     return (
         <main className="min-h-screen w-full bg-metallic-shimmer py-8 px-4 md:px-12 flex flex-col items-center">
-            {/* الشريط العلوي الثابت والشكل الدائري */}
             <Header />
 
             <div className="w-full max-w-6xl">
-                {/* عنوان القسم والوصف الفرعي */}
                 <div className="mb-6 px-2">
                     <h2 className="text-3xl font-extrabold text-[#5c212c] tracking-tight">
                         Our Products
@@ -23,9 +21,7 @@ const HomePage = () => {
                     </p>
                 </div>
 
-                {/* الكارت الشفاف الكبير المحتوي على المنتجات وشريط البحث */}
                 <div className="w-full bg-[#df9fa8]/50 backdrop-blur-md rounded-[36px] p-6 md:p-8 border border-white/40 shadow-2xl">
-                    {/* شريط البحث والتصفية */}
                     <div className="w-full flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
                         <div className="relative w-full md:w-1/2">
                             <input
@@ -45,7 +41,6 @@ const HomePage = () => {
                         </div>
                     </div>
 
-                    {/* شبكة المنتجات (4 منتجات في كل صف) مع تمرير دالة فتح الـ Modal */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                         <ProductCard
                             onViewDetails={() => setIsModalOpen(true)}

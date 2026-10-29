@@ -5,7 +5,7 @@ const CartView = () => {
   return (
     <div className="w-full bg-[#df9fa8]/50 backdrop-blur-md rounded-[36px] p-6 md:p-8 border border-white/40 shadow-2xl flex flex-col lg:flex-row gap-6">
       
-      {/* قسم المنتجات المختارة */}
+      
       <div className="w-full lg:w-7/12 bg-white/30 backdrop-blur-sm rounded-[28px] p-5 border border-white/40 shadow-sm flex flex-col gap-4">
         <div className="flex items-center justify-between pb-3 border-b border-[#823945]/15">
           <span className="text-sm font-bold text-[#5c212c]">Selected Products</span>
@@ -14,7 +14,7 @@ const CartView = () => {
           </span>
         </div>
 
-        {/* عنصر المنتج الأول */}
+       
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 bg-white/40 rounded-[20px] border border-white/30">
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="w-16 h-16 rounded-[14px] overflow-hidden border border-white/40 shrink-0">
@@ -44,7 +44,7 @@ const CartView = () => {
           </div>
         </div>
 
-        {/* عنصر المنتج الثاني */}
+        
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 bg-white/40 rounded-[20px] border border-white/30">
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="w-16 h-16 rounded-[14px] overflow-hidden border border-white/40 shrink-0">
@@ -74,7 +74,7 @@ const CartView = () => {
           </div>
         </div>
 
-        {/* عنصر المنتج الثالث */}
+        
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 bg-white/40 rounded-[20px] border border-white/30">
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="w-16 h-16 rounded-[14px] overflow-hidden border border-white/40 shrink-0">
@@ -106,7 +106,7 @@ const CartView = () => {
 
       </div>
 
-      {/* قسم ملخص الطلب (Order Summary) */}
+      
       <div className="w-full lg:w-5/12 bg-white/30 backdrop-blur-sm rounded-[28px] p-6 border border-white/40 shadow-sm flex flex-col justify-between">
         <div>
           <h3 className="text-base font-bold text-[#5c212c] pb-4 border-b border-[#823945]/15 mb-4">

@@ -16,9 +16,7 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md transition-opacity animate-fadeIn">
-            {/* جسم نافذة الـ Modal */}
             <div className="relative w-full max-w-3xl bg-[#f8e1e5]/90 backdrop-blur-xl rounded-[32px] p-6 md:p-8 border border-white/60 shadow-2xl flex flex-col md:flex-row gap-6">
-                {/* زر الإغلاق العلوي */}
                 <button
                     onClick={onClose}
                     className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/60 hover:bg-white text-[#5c212c] flex items-center justify-center transition-colors shadow-sm cursor-pointer z-10"
@@ -26,9 +24,7 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                     <X className="w-4 h-4" />
                 </button>
 
-                {/* القسم الأيسر: الصورة الرئيسية والمعرض */}
                 <div className="w-full md:w-1/2 flex flex-col gap-4">
-                    {/* الصورة الرئيسية للمنتج */}
                     <div className="w-full h-72 rounded-[24px] overflow-hidden border border-white/50 shadow-md">
                         <img
                             src={productImg}
@@ -37,7 +33,6 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                         />
                     </div>
 
-                    {/* معرض الصور المصغرة (Gallery) */}
                     <div className="flex items-center justify-between gap-2 px-1">
                         <button className="w-7 h-7 rounded-full bg-white/50 hover:bg-white text-[#5c212c] flex items-center justify-center transition-colors shadow-sm">
                             <ChevronLeft className="w-4 h-4" />
@@ -66,15 +61,12 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                     </div>
                 </div>
 
-                {/* القسم الأيمن: تفاصيل المنتج وأزرار الشراء */}
                 <div className="w-full md:w-1/2 flex flex-col justify-between pt-2">
                     <div>
-                        {/* Tag التصنيف */}
                         <span className="inline-block px-3 py-1 rounded-full bg-white/60 text-xs font-semibold text-[#823945] mb-2 shadow-xs">
                             Laptops
                         </span>
 
-                        {/* العنوان والوصف */}
                         <h2 className="text-2xl font-bold text-[#5c212c] mb-2">
                             UltraBook Pro 15"
                         </h2>
@@ -85,7 +77,6 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                             productivity, more freedom.
                         </p>
 
-                        {/* التقييم */}
                         <div className="flex items-center gap-1.5 mb-4 text-xs font-semibold text-[#823945]">
                             <div className="flex text-amber-500">★★★★★</div>
                             <span>4.8</span>
@@ -94,7 +85,6 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                             </span>
                         </div>
 
-                        {/* السعر وحالة التوفر */}
                         <div className="text-2xl font-extrabold text-[#5c212c] mb-3">
                             $1,199.00
                         </div>
@@ -110,7 +100,6 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                             </div>
                         </div>
 
-                        {/* التحكم بالكمية */}
                         <div className="mb-5">
                             <label className="block text-xs font-bold text-[#5c212c] mb-2">
                                 Quantity
@@ -137,7 +126,6 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    {/* أزرار الإضافة للسلة والشراء */}
                     <div className="flex flex-col gap-2.5">
                         <button
                             type="button"

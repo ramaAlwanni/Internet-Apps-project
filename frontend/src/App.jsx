@@ -8,10 +8,8 @@ function App() {
     return (
         <Router>
             <Routes>
-                {/* صفحة تسجيل الدخول كواجهة افتراضية أولى */}
                 <Route path="/" element={<LoginPage />} />
 
-                {/* صفحة المتجر الرئيسية */}
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/orders" element={<OrdersPage />} />
