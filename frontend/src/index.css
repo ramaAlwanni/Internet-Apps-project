@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+/* تعريف تأثير البريق المعدني كمتغير CSS */
+:root {
+  --metallic-shimmer: radial-gradient(circle at center, #bf616a 0%, #a85c6b 20%, #e8c1c7 40%, #a85c6b 60%, #bf616a 80%, #7c3e45 100%);
+}
+
+/* إضافة كلاس مخصص لاستخدامه في Tailwind */
+@layer utilities {
+  .bg-metallic-shimmer {
+    background: var(--metallic-shimmer);
+  }
+}
