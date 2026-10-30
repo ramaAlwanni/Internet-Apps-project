@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+    --metallic-shimmer: radial-gradient(
+        circle at center,
+        #bf616a 0%,
+        #a85c6b 20%,
+        #e8c1c7 40%,
+        #a85c6b 60%,
+        #bf616a 80%,
+        #7c3e45 100%
+    );
+}
+
+@layer utilities {
+    .bg-metallic-shimmer {
+        background: var(--metallic-shimmer);
+    }
+}
