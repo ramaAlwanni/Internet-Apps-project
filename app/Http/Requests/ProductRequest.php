@@ -14,7 +14,7 @@ class ProductRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -34,14 +34,8 @@ class ProductRequest extends FormRequest
         ];
     }
 
-    public function validationfailed(Validator $validator)
+    public function failedValidation(Validator $validator)
     {
-        $response = response()->json([
-            'success' => false,
-            'message' => 'Validation errors',
-            'errors'  => $validator->errors(),
-        ], 422);
-
-        throw new ValidationException($validator, $response);
+        throw new ValidationException($validator);
     }
 }
