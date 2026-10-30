@@ -1,7 +1,7 @@
 <?php
 
-use App\Exceptions\Auth\InvalidCredentialsException;
 use App\Exceptions\BaseException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -9,6 +9,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Modules\User\Exceptions\Auth\InvalidCredentialsException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -38,6 +39,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => 'Unauthenticated',
                 'data' => null
             ], 401);
+        });
+
+        $exceptions->render(function (AuthorizationException $e, $request) {
+                return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to access this resource!',
+                'data' => null
+            ], 403);
         });
 
         $exceptions->render(function (ValidationException $e) {
