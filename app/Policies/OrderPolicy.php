@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use Modules\Order\Models\Order;
+use Modules\User\Models\User;
 
 class OrderPolicy
 {
