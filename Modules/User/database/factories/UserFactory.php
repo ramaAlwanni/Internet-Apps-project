@@ -1,17 +1,19 @@
 <?php
 
-namespace Database\Factories;
+namespace Modules\User\Database\Factories;
 
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Modules\User\Models\User;
 
 /**
  * @extends Factory<User>
  */
 class UserFactory extends Factory
 {
+    protected $model = User::class;
+
     /**
      * The current password being used by the factory.
      */
@@ -34,7 +36,7 @@ class UserFactory extends Factory
     }
 
     /**
-     * Indicate that the model's email address should be unverified.
+     * Indicate that the user's email address should be unverified.
      */
     public function unverified(): static
     {

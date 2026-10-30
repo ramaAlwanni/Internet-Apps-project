@@ -3,54 +3,53 @@
 namespace Modules\User\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Traits\ApiResponseTrait;
+use Illuminate\Validation\ValidationException;
+use Modules\User\Http\Requests\SignUpRequest;
+use Modules\User\Service\UserService;
+use Modules\User\Http\Requests\SignInRequest;
 
 class UserController extends Controller
 {
+    use ApiResponseTrait;
+
+    public function __construct(
+        private UserService $userService
+    ) {}
+
     /**
-     * Display a listing of the resource.
+     * Handle user registration.
+     *
+     * @param  \Modules\User\Http\Requests\SignUpRequest  $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function index()
+    public function signUp(SignUpRequest $request)
     {
-        return view('user::index');
+        try{
+            $userData = $this->userService->signUp($request->validated());
+            return $this->successResponse('User registered successfully', $userData, 201);
+        }
+
+        catch (ValidationException $e) {
+            return $this->errorResponse('Validation failed', $e->errors(), 422);
+        }
+
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Handle user login.
+     *
+     * @param  \Modules\User\Http\Requests\SignInRequest  $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function create()
+    public function signIn(SignInRequest $request)
     {
-        return view('user::create');
+        try {
+            $userData = $this->userService->signIn($request->validated());
+            return $this->successResponse('User signed in successfully', $userData, 200);
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Validation failed', $e->errors(), 422);
+        }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request) {}
-
-    /**
-     * Show the specified resource.
-     */
-    public function show($id)
-    {
-        return view('user::show');
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit($id)
-    {
-        return view('user::edit');
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id) {}
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id) {}
 }
