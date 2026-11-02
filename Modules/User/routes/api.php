@@ -3,10 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use Modules\User\Http\Controllers\UserController;
 
-Route::post('signup', [UserController::class, 'signUp']);
-
-Route::post('signin', [UserController::class, 'signIn']);
-
-Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
-    Route::apiResource('users', UserController::class)->names('user');
+Route::prefix('v1')->name('v1.')->group(function () {
+    Route::prefix('user')->name('user.')->group(function () {
+        Route::post('sign-up', [UserController::class, 'signUp'])->name('sign-up');
+        Route::post('sign-in', [UserController::class, 'signIn'])->name('sign-in');
+    });
 });
