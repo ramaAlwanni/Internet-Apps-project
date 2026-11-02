@@ -30,14 +30,4 @@ class SignUpRequest extends FormRequest
         ];
     }
 
-    protected function failedValidation(Validator $validator): void
-    {
-        $response = response()->json([
-            'success' => false,
-            'message' => 'Validation errors',
-            'errors'  => $validator->errors(),
-        ], 422);
-
-        throw new ValidationException($validator, $response);
-    }
 }
