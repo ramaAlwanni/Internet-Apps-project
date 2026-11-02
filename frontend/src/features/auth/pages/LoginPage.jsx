@@ -1,19 +1,14 @@
-import { useNavigate } from 'react-router-dom';
-import AuthLayout from '../components/AuthLayout';
+import AuthLayout from "../components/AuthLayout";
+import LoginForm from "../components/LoginForm";
 
 const LoginPage = () => {
-  const navigate = useNavigate();
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    navigate('/home'); 
-  };
-
-  return (
-    <main className="min-h-screen w-full flex items-center justify-center bg-metallic-shimmer p-4">
-      <AuthLayout onLogin={handleLogin} />
-    </main>
-  );
+    return (
+        <main className="min-h-screen w-full flex items-center justify-center bg-metallic-shimmer p-4">
+            <AuthLayout>
+                <LoginForm />
+            </AuthLayout>
+        </main>
+    );
 };
 
 export default LoginPage;
