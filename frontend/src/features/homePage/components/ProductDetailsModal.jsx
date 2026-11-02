@@ -1,18 +1,10 @@
 import { useState } from "react";
-import {
-    X,
-    ChevronLeft,
-    ChevronRight,
-    ShoppingCart,
-    Zap,
-    Package,
-} from "lucide-react";
-import productImg from "../../../assets/login-hero.jpg";
+import { X, ShoppingCart, Zap, Package } from "lucide-react";
 
-const ProductDetailsModal = ({ isOpen, onClose }) => {
+const ProductDetailsModal = ({ isOpen, onClose, product }) => {
     const [quantity, setQuantity] = useState(1);
 
-    if (!isOpen) return null;
+    if (!isOpen || !product) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md transition-opacity animate-fadeIn">
@@ -25,56 +17,27 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                 </button>
 
                 <div className="w-full md:w-1/2 flex flex-col gap-4">
-                    <div className="w-full h-72 rounded-[24px] overflow-hidden border border-white/50 shadow-md">
+                    <div className="w-full h-72 rounded-[24px] overflow-hidden border border-white/50 shadow-md bg-gray-100">
                         <img
-                            src={productImg}
-                            alt="Product Detail"
+                            src={product.photo_url}
+                            alt={product.name}
                             className="w-full h-full object-cover"
                         />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 px-1">
-                        <button className="w-7 h-7 rounded-full bg-white/50 hover:bg-white text-[#5c212c] flex items-center justify-center transition-colors shadow-sm">
-                            <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <div className="flex items-center gap-2 overflow-x-auto py-1">
-                            {[1, 2, 3, 4].map((item, idx) => (
-                                <div
-                                    key={idx}
-                                    className={`w-12 h-12 rounded-[12px] overflow-hidden border-2 cursor-pointer transition-all ${
-                                        idx === 0
-                                            ? "border-[#823945] scale-105 shadow-sm"
-                                            : "border-white/40 opacity-70 hover:opacity-100"
-                                    }`}
-                                >
-                                    <img
-                                        src={productImg}
-                                        alt="Thumbnail"
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                        <button className="w-7 h-7 rounded-full bg-white/50 hover:bg-white text-[#5c212c] flex items-center justify-center transition-colors shadow-sm">
-                            <ChevronRight className="w-4 h-4" />
-                        </button>
                     </div>
                 </div>
 
                 <div className="w-full md:w-1/2 flex flex-col justify-between pt-2">
                     <div>
                         <span className="inline-block px-3 py-1 rounded-full bg-white/60 text-xs font-semibold text-[#823945] mb-2 shadow-xs">
-                            Laptops
+                            {product.category?.name || "Electronics"}
                         </span>
 
                         <h2 className="text-2xl font-bold text-[#5c212c] mb-2">
-                            UltraBook Pro 15"
+                            {product.name}
                         </h2>
+
                         <p className="text-xs font-medium text-[#732f3a]/80 leading-relaxed mb-3">
-                            Powerful performance, stunning display, and
-                            ultra-portable design. The UltraBook Pro 15" is
-                            built for those who want more — more speed, more
-                            productivity, more freedom.
+                            {product.description}
                         </p>
 
                         <div className="flex items-center gap-1.5 mb-4 text-xs font-semibold text-[#823945]">
@@ -86,17 +49,23 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                         </div>
 
                         <div className="text-2xl font-extrabold text-[#5c212c] mb-3">
-                            $1,199.00
+                            ${product.price}
                         </div>
 
                         <div className="flex items-center gap-4 text-xs font-medium pb-4 border-b border-[#823945]/15 mb-4">
                             <div className="flex items-center gap-1.5">
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                                <span className="text-[#5c212c]">In Stock</span>
+                                <span
+                                    className={`w-2.5 h-2.5 rounded-full ${product.stock > 0 ? "bg-emerald-500" : "bg-red-500"}`}
+                                ></span>
+                                <span className="text-[#5c212c]">
+                                    {product.stock > 0
+                                        ? "In Stock"
+                                        : "Out of Stock"}
+                                </span>
                             </div>
                             <div className="flex items-center gap-1.5 text-[#732f3a]/80">
                                 <Package className="w-3.5 h-3.5" />
-                                <span>Available: 12</span>
+                                <span>Available: {product.stock}</span>
                             </div>
                         </div>
 
@@ -109,7 +78,7 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                                     onClick={() =>
                                         setQuantity(Math.max(1, quantity - 1))
                                     }
-                                    className="w-7 h-7 rounded-full bg-white/70 hover:bg-white text-[#5c212c] font-bold flex items-center justify-center transition-colors text-sm shadow-xs"
+                                    className="w-7 h-7 rounded-full bg-white/70 hover:bg-white text-[#5c212c] font-bold flex items-center justify-center transition-colors text-sm shadow-xs cursor-pointer"
                                 >
                                     -
                                 </button>
@@ -118,7 +87,7 @@ const ProductDetailsModal = ({ isOpen, onClose }) => {
                                 </span>
                                 <button
                                     onClick={() => setQuantity(quantity + 1)}
-                                    className="w-7 h-7 rounded-full bg-white/70 hover:bg-white text-[#5c212c] font-bold flex items-center justify-center transition-colors text-sm shadow-xs"
+                                    className="w-7 h-7 rounded-full bg-white/70 hover:bg-white text-[#5c212c] font-bold flex items-center justify-center transition-colors text-sm shadow-xs cursor-pointer"
                                 >
                                     +
                                 </button>

@@ -6,10 +6,14 @@ export const registerUser = createAsyncThunk(
     async (userData, thunkAPI) => {
         try {
             const data = await registerApi(userData);
+            const token = data.token || data.data?.token;
+            const user = data.user || data.data?.user;
 
-            if (data.token || (data.data && data.data.token)) {
-                const token = data.token || data.data.token;
+            if (token) {
                 localStorage.setItem("token", token);
+            }
+            if (user) {
+                localStorage.setItem("user", JSON.stringify(user));
             }
             return data;
         } catch (error) {
@@ -27,10 +31,15 @@ export const loginUser = createAsyncThunk(
     async (credentials, thunkAPI) => {
         try {
             const data = await loginApi(credentials);
+            const token = data.token || data.data?.token;
 
-            const token = data.token || (data.data && data.data.token);
+            const user = data.user || data.data?.user;
+
             if (token) {
                 localStorage.setItem("token", token);
+            }
+            if (user) {
+                localStorage.setItem("user", JSON.stringify(user));
             }
             return data;
         } catch (error) {
@@ -44,7 +53,7 @@ export const loginUser = createAsyncThunk(
 );
 
 const initialState = {
-    user: null,
+    user: JSON.parse(localStorage.getItem("user")) || null,
     token: localStorage.getItem("token") || null,
     isLoading: false,
     isError: false,
@@ -59,6 +68,7 @@ const authSlice = createSlice({
             state.user = null;
             state.token = null;
             localStorage.removeItem("token");
+            localStorage.removeItem("user");
         },
     },
     extraReducers: (builder) => {

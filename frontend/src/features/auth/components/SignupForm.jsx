@@ -11,7 +11,6 @@ const SignupForm = () => {
     const dispatch = useDispatch();
     const { isLoading } = useSelector((state) => state.auth);
 
-    
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -26,7 +25,6 @@ const SignupForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-      
         if (formData.password !== formData.password_confirmation) {
             toast.error("Passwords do not match!");
             return;
@@ -43,7 +41,16 @@ const SignupForm = () => {
                     border: "1px solid #823945",
                 },
             });
-            navigate("/home"); 
+
+            const resData = resultAction.payload;
+            const userObj = resData.user || resData.data?.user;
+            const userRole = userObj?.role;
+
+            if (userRole === "admin") {
+                navigate("/admin/products");
+            } else {
+                navigate("/home");
+            }
         } else {
             toast.error(
                 resultAction.payload ||

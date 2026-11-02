@@ -11,7 +11,6 @@ const LoginForm = () => {
     const dispatch = useDispatch();
     const { isLoading } = useSelector((state) => state.auth);
 
-    
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -28,14 +27,23 @@ const LoginForm = () => {
 
         if (loginUser.fulfilled.match(resultAction)) {
             toast.success("Logged in successfully!", {
-                icon: '👏',
+                icon: "👏",
                 style: {
-                    background: '#f8e1e5',
-                    color: '#5c212c',
-                    border: '1px solid #823945',
+                    background: "#f8e1e5",
+                    color: "#5c212c",
+                    border: "1px solid #823945",
                 },
             });
-            navigate('/home'); 
+
+            const resData = resultAction.payload;
+            const userObj = resData.user || resData.data?.user;
+            const userRole = userObj?.role;
+
+            if (userRole === "admin") {
+                navigate("/admin/products");
+            } else {
+                navigate("/home");
+            }
         } else {
             toast.error(resultAction.payload || "Invalid email or password.");
         }
@@ -50,19 +58,19 @@ const LoginForm = () => {
                 Login
             </h2>
 
-            <CustomInput 
-                type="email" 
+            <CustomInput
+                type="email"
                 name="email"
-                placeholder="Email" 
-                icon={Mail} 
+                placeholder="Email"
+                icon={Mail}
                 value={formData.email}
                 onChange={handleChange}
             />
-            <CustomInput 
-                type="password" 
+            <CustomInput
+                type="password"
                 name="password"
-                placeholder="Password" 
-                icon={Lock} 
+                placeholder="Password"
+                icon={Lock}
                 value={formData.password}
                 onChange={handleChange}
             />
