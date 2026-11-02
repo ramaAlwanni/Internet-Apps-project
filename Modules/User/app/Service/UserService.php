@@ -14,6 +14,8 @@ class UserService
             'email' => $validatedData['email'],
             'password' => bcrypt($validatedData['password']),
         ]);
+        $user->assignRole('user');
+
         $token = FacadesJWTAuth::fromUser($user);
 
         return ['user' => $user, 'token' => $token];
