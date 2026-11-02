@@ -1,20 +1,32 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { getCategoriesApi } from "../../services/api";
+import { getCategoriesApi, addCategoryApi } from "../../services/api";
 
 export const fetchCategories = createAsyncThunk(
     "category/fetchCategories",
     async (_, thunkAPI) => {
         try {
             const data = await getCategoriesApi();
-            return data; 
+            return data;
         } catch (error) {
-            const message =
-                error.response?.data?.message ||
-                error.message ||
-                "Failed to fetch categories";
-            return thunkAPI.rejectWithValue(message);
+            return thunkAPI.rejectWithValue(
+                error.response?.data?.message || error.message,
+            );
         }
-    }
+    },
+);
+
+export const addCategory = createAsyncThunk(
+    "category/addCategory",
+    async (categoryData, thunkAPI) => {
+        try {
+            const data = await addCategoryApi(categoryData);
+            return data;
+        } catch (error) {
+            return thunkAPI.rejectWithValue(
+                error.response?.data?.message || error.message,
+            );
+        }
+    },
 );
 
 const categorySlice = createSlice({
@@ -30,17 +42,16 @@ const categorySlice = createSlice({
         builder
             .addCase(fetchCategories.pending, (state) => {
                 state.isLoading = true;
-                state.isError = false;
             })
             .addCase(fetchCategories.fulfilled, (state, action) => {
                 state.isLoading = false;
-       
                 state.categories = action.payload.data || action.payload;
             })
-            .addCase(fetchCategories.rejected, (state, action) => {
-                state.isLoading = false;
-                state.isError = true;
-                state.message = action.payload;
+            .addCase(addCategory.fulfilled, (state, action) => {
+                const newCat = action.payload.data;
+                if (newCat) {
+                    state.categories.push(newCat);
+                }
             });
     },
 });

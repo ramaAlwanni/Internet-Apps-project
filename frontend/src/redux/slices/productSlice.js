@@ -1,18 +1,31 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { getProductsApi } from "../../services/api";
+import { getProductsApi, addProductApi } from "../../services/api";
 
 export const fetchProducts = createAsyncThunk(
     "product/fetchProducts",
     async ({ categoryId = "", page = 1 } = {}, thunkAPI) => {
         try {
             const data = await getProductsApi(categoryId, page);
-            return data; 
+            return data;
         } catch (error) {
             const message =
                 error.response?.data?.message ||
                 error.message ||
                 "Failed to fetch products";
             return thunkAPI.rejectWithValue(message);
+        }
+    },
+);
+export const addProduct = createAsyncThunk(
+    "product/addProduct",
+    async (productData, thunkAPI) => {
+        try {
+            const data = await addProductApi(productData);
+            return data;
+        } catch (error) {
+            return thunkAPI.rejectWithValue(
+                error.response?.data?.message || error.message,
+            );
         }
     },
 );
@@ -46,6 +59,12 @@ const productSlice = createSlice({
                 state.isLoading = false;
                 state.isError = true;
                 state.message = action.payload;
+            })
+            .addCase(addProduct.fulfilled, (state, action) => {
+                const newProduct = action.payload.data;
+                if (newProduct) {
+                    state.products.unshift(newProduct);
+                }
             });
     },
 });
