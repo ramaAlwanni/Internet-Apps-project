@@ -4,10 +4,10 @@ namespace Modules\User\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Traits\ApiResponseTrait;
-use Illuminate\Validation\ValidationException;
 use Modules\User\Http\Requests\SignUpRequest;
 use Modules\User\Service\UserService;
 use Modules\User\Http\Requests\SignInRequest;
+use Modules\User\Resources\UserResource;
 
 class UserController extends Controller
 {
@@ -27,6 +27,7 @@ class UserController extends Controller
     {
 
             $userData = $this->userService->signUp($request->validated());
+            $userData['user'] = new UserResource($userData['user']);
             return $this->successResponse('User registered successfully', $userData, 201);
 
     }
@@ -40,6 +41,7 @@ class UserController extends Controller
     public function signIn(SignInRequest $request)
     {
             $userData = $this->userService->signIn($request->validated());
+            $userData['user'] = new UserResource($userData['user']);
             return $this->successResponse('User signed in successfully', $userData, 200);
 
     }
