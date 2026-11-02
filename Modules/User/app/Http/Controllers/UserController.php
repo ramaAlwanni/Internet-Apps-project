@@ -25,14 +25,9 @@ class UserController extends Controller
      */
     public function signUp(SignUpRequest $request)
     {
-        try{
+
             $userData = $this->userService->signUp($request->validated());
             return $this->successResponse('User registered successfully', $userData, 201);
-        }
-
-        catch (ValidationException $e) {
-            return $this->errorResponse('Validation failed', $e->errors(), 422);
-        }
 
     }
 
@@ -44,12 +39,9 @@ class UserController extends Controller
      */
     public function signIn(SignInRequest $request)
     {
-        try {
             $userData = $this->userService->signIn($request->validated());
             return $this->successResponse('User signed in successfully', $userData, 200);
-        } catch (ValidationException $e) {
-            return $this->errorResponse('Validation failed', $e->errors(), 422);
-        }
+
     }
 
 }
