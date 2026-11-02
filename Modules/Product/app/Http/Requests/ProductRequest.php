@@ -2,9 +2,7 @@
 
 namespace Modules\Product\Http\Requests;
 
-use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\ValidationException;
 
 class ProductRequest extends FormRequest
 {
@@ -29,19 +27,5 @@ class ProductRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
-    }
-
-    /**
-     * Handle a failed validation attempt.
-     *
-     * @param  \Illuminate\Contracts\Validation\Validator  $validator
-     * @return void
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
-    
-    public function failedValidation(Validator $validator)
-    {
-        throw new ValidationException($validator);
     }
 }
