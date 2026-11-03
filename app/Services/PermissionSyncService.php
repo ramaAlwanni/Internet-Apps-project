@@ -15,23 +15,25 @@ class PermissionSyncService
 
         $permissions = Config::get('permissions.permissions', []);
         $roles = Config::get('permissions.roles', []);
+foreach ($permissions as $permission) {
+    Permission::firstOrCreate([
+        'name' => $permission,
+        'guard_name' => 'api',
+    ]);
+}
 
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate([
-                'name' => $permission,
-            ]);
-        }
+foreach ($roles as $roleName => $permissions) {
+    $role = Role::firstOrCreate([
+        'name' => $roleName,
+        'guard_name' => 'api',
+    ]);
 
-        foreach ($roles as $roleName => $permissions) {
-            $role = Role::firstOrCreate([
-                'name' => $roleName,
-            ]);
+    if ($roleName === 'super-admin') {
+        $role->syncPermissions(Permission::where('guard_name', 'api')->get());
+    } else {
+        $role->syncPermissions($permissions);
+    }
+}
 
-            if ($roleName === 'super-admin') {
-                $role->syncPermissions(Permission::all());
-            } else {
-                $role->syncPermissions($permissions);
-            }
-        }
     }
 }

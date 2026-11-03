@@ -4,11 +4,13 @@ const CustomInput = ({
     icon: Icon,
     value,
     onChange,
+    name,
 }) => {
     return (
         <div className="relative w-full mb-5">
             <input
                 type={type}
+                name={name} 
                 placeholder={placeholder}
                 value={value}
                 onChange={onChange}
