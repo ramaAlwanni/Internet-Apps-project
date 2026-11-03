@@ -2,7 +2,24 @@ import { X, Calendar, Truck, ArrowLeft } from "lucide-react";
 import productImg from "../../../assets/login-hero.jpg";
 
 const OrderDetailsModal = ({ isOpen, onClose, order }) => {
-    if (!isOpen) return null;
+    if (!isOpen || !order) return null;
+
+    const dateObj = new Date(order.created_at);
+    const formattedDate = dateObj.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+    const formattedTime = dateObj.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+
+    const itemsList = order.items || [];
+    const totalItemsCount = itemsList.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+    );
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md transition-opacity animate-fadeIn">
@@ -21,11 +38,11 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                                 Order Details
                             </h3>
                             <span className="text-xs font-bold text-[#823945]">
-                                {order?.id || "#ORD-1004"}
+                                #ORD-{order.id}
                             </span>
                         </div>
-                        <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold">
-                            • {order?.status || "Delivered"}
+                        <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold capitalize">
+                            • {order.status}
                         </span>
                     </div>
 
@@ -34,10 +51,10 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                             <Calendar className="w-4 h-4 text-[#823945]" />
                             <div>
                                 <p className="font-semibold text-[#5c212c]">
-                                    {order?.date || "Aug 24, 2025"}
+                                    {formattedDate}
                                 </p>
                                 <p className="opacity-70 text-[10px]">
-                                    10:32 AM
+                                    {formattedTime}
                                 </p>
                             </div>
                         </div>
@@ -45,10 +62,10 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                             <Truck className="w-4 h-4 text-[#823945]" />
                             <div>
                                 <p className="font-semibold text-[#5c212c]">
-                                    Delivered on
+                                    Order Status
                                 </p>
-                                <p className="opacity-70 text-[10px]">
-                                    Aug 27, 2025
+                                <p className="opacity-70 text-[10px] capitalize">
+                                    {order.status}
                                 </p>
                             </div>
                         </div>
@@ -56,34 +73,33 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
 
                     <div className="mb-4">
                         <span className="text-xs font-bold text-[#5c212c] block mb-3">
-                            Items (3)
+                            Items ({totalItemsCount})
                         </span>
                         <div className="flex flex-col gap-3 max-h-[200px] overflow-y-auto pr-1">
-                            {[
-                                "Wireless Headphones",
-                                "Travel Backpack",
-                                'UltraBook Pro 15"',
-                            ].map((item, idx) => (
+                            {itemsList.map((item) => (
                                 <div
-                                    key={idx}
+                                    key={item.id}
                                     className="flex items-center gap-3 p-2 bg-white/30 rounded-[16px] border border-white/20"
                                 >
-                                    <div className="w-12 h-12 rounded-[12px] overflow-hidden border border-white/40 shrink-0">
+                                    <div className="w-12 h-12 rounded-[12px] overflow-hidden border border-white/40 shrink-0 bg-gray-100">
                                         <img
-                                            src={productImg}
-                                            alt="Item"
+                                            src={
+                                                item.product?.photo_url ||
+                                                productImg
+                                            }
+                                            alt={item.product_name}
                                             className="w-full h-full object-cover"
                                         />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <h5 className="text-xs font-bold text-[#5c212c] truncate">
-                                            {item}
+                                            {item.product_name}
                                         </h5>
                                         <p className="text-xs font-extrabold text-[#823945]">
-                                            $299.00
+                                            ${item.unit_price}
                                         </p>
                                         <span className="text-[10px] text-[#732f3a]/70">
-                                            Qty: 1
+                                            Qty: {item.quantity}
                                         </span>
                                     </div>
                                 </div>
@@ -94,9 +110,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
 
                 <div className="pt-4 border-t border-[#823945]/15 mt-2">
                     <div className="flex justify-between text-xs font-medium text-[#732f3a] mb-1">
-                        <span>Subtotal (3 items)</span>
+                        <span>Subtotal ({totalItemsCount} items)</span>
                         <span className="font-bold text-[#5c212c]">
-                            $1,647.00
+                            ${order.total_amount}
                         </span>
                     </div>
                     <div className="flex justify-between text-xs font-medium text-[#732f3a] mb-3">
@@ -105,7 +121,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                     </div>
                     <div className="flex justify-between text-base font-extrabold text-[#5c212c] mb-4">
                         <span>Total</span>
-                        <span>{order?.total || "$1,647.00"}</span>
+                        <span>${order.total_amount}</span>
                     </div>
 
                     <button
