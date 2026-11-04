@@ -50,7 +50,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/', [
         OrderController::class,
         'index',
-    ])->middleware('permission:view-order-details,api');
+    ]);
 
     Route::post('/', [
         OrderController::class,
@@ -77,5 +77,5 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/{order}', [
         OrderController::class,
         'show',
-    ])->middleware('permission:view-order-details,api');
+    ]);
 });
