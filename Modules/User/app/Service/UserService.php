@@ -35,4 +35,9 @@ class UserService
 }
         return ['user' => auth()->user(), 'token' => $token];
     }
+
+    public function signOut(): void
+    {
+        FacadesJWTAuth::invalidate(FacadesJWTAuth::getToken());
+    }
 }
