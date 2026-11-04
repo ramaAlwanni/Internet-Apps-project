@@ -72,3 +72,38 @@ export const addCategoryApi = async (categoryData) => {
     const response = await API.post("/v1/products/categories", categoryData);
     return response.data;
 };
+
+export const addToCartApi = async (cartData) => {
+    const response = await API.post("/v1/orders/cart/items", {
+        product_id: cartData.product_id,
+        quantity: cartData.quantity,
+    });
+    return response.data;
+};
+
+export const getCartApi = async () => {
+    const response = await API.get("/v1/orders/cart");
+    return response.data;
+};
+
+export const checkoutCartApi = async () => {
+    const response = await API.post("/v1/orders/cart/checkout");
+    return response.data;
+};
+
+export const removeFromCartApi = async (productId) => {
+    const response = await API.delete(`/v1/orders/cart/items/${productId}`);
+    return response.data;
+};
+
+export const updateCartItemQuantityApi = async (productId, quantity) => {
+    const response = await API.put(`/v1/orders/cart/items/${productId}`, {
+        quantity: quantity,
+    });
+    return response.data;
+};
+
+export const getMyOrdersApi = async () => {
+    const response = await API.get("/v1/orders");
+    return response.data;
+};
