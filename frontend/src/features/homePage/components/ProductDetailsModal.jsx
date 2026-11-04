@@ -1,10 +1,43 @@
 import { useState } from "react";
+import { useDispatch } from "react-redux";
+import { addToCart } from "../../../redux/slices/cartSlice"; 
 import { X, ShoppingCart, Zap, Package } from "lucide-react";
+import toast from "react-hot-toast";
 
 const ProductDetailsModal = ({ isOpen, onClose, product }) => {
+    const dispatch = useDispatch();
     const [quantity, setQuantity] = useState(1);
+    const [isLoading, setIsLoading] = useState(false);
 
     if (!isOpen || !product) return null;
+
+    const handleAddToCart = async () => {
+        setIsLoading(true);
+        const resultAction = await dispatch(
+            addToCart({
+                product_id: product.id,
+                quantity: quantity,
+            }),
+        );
+        setIsLoading(false);
+
+        if (addToCart.fulfilled.match(resultAction)) {
+            toast.success("Product added to cart successfully! 😊", {
+                style: {
+                    background: "#f8e1e5",
+                    color: "#5c212c",
+                    fontWeight: "bold",
+                },
+                iconTheme: {
+                    primary: "#823945",
+                    secondary: "#fff",
+                },
+            });
+            onClose();
+        } else {
+            toast.error(resultAction.payload || "Failed to add to cart 😢");
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md transition-opacity animate-fadeIn">
@@ -98,10 +131,14 @@ const ProductDetailsModal = ({ isOpen, onClose, product }) => {
                     <div className="flex flex-col gap-2.5">
                         <button
                             type="button"
-                            className="w-full py-3 px-6 rounded-full bg-[#823945] text-white text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                            onClick={handleAddToCart}
+                            disabled={isLoading}
+                            className="w-full py-3 px-6 rounded-full bg-[#823945] text-white text-xs font-bold shadow-md hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                         >
                             <ShoppingCart className="w-4 h-4" />
-                            <span>Add to Cart</span>
+                            <span>
+                                {isLoading ? "Adding..." : "Add to Cart"}
+                            </span>
                         </button>
 
                         <button
