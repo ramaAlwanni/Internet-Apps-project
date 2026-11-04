@@ -107,3 +107,14 @@ export const getMyOrdersApi = async () => {
     const response = await API.get("/v1/orders");
     return response.data;
 };
+
+export const getAdminOrdersApi = async () => {
+    const response = await API.get("/v1/orders/admin");
+    return response.data;
+};
+export const updateOrderStatusApi = async (orderId, newStatus) => {
+    const response = await API.put(`/v1/orders/${orderId}/status`, {
+        status: newStatus,
+    });
+    return response.data;
+};
