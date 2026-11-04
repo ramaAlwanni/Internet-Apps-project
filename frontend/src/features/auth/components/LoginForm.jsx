@@ -23,10 +23,21 @@ const LoginForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (!formData.email.trim() || !formData.password.trim()) {
+            toast.error("Please fill in all fields!");
+            return;
+        }
+
+       
+        if (formData.password.length < 8) {
+            toast.error("Password must be at least 8 characters long!");
+            return;
+        }
+
         const resultAction = await dispatch(loginUser(formData));
 
         if (loginUser.fulfilled.match(resultAction)) {
-            toast.success("Logged in successfully!", {
+            toast.success("Logged in successfully! ❤️", {
                 icon: "👏",
                 style: {
                     background: "#f8e1e5",
@@ -45,7 +56,10 @@ const LoginForm = () => {
                 navigate("/home");
             }
         } else {
-            toast.error(resultAction.payload || "Invalid email or password.");
+           
+            toast.error(
+                resultAction.payload || "Invalid email or password. Please try again."
+            );
         }
     };
 

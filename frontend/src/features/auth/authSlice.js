@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { registerApi, loginApi } from "../../services/api";
+import { registerApi, loginApi, signoutApi } from "../../services/api";
 
 export const registerUser = createAsyncThunk(
     "auth/registerUser",
@@ -52,6 +52,18 @@ export const loginUser = createAsyncThunk(
     },
 );
 
+export const logoutUser = createAsyncThunk("auth/logoutUser", async () => {
+    try {
+        await signoutApi();
+    } catch (error) {
+      
+        console.error("Signout API error:", error);
+    } finally {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+    }
+});
+
 const initialState = {
     user: JSON.parse(localStorage.getItem("user")) || null,
     token: localStorage.getItem("token") || null,
@@ -102,6 +114,10 @@ const authSlice = createSlice({
                 state.isLoading = false;
                 state.isError = true;
                 state.message = action.payload;
+            })
+            .addCase(logoutUser.fulfilled, (state) => {
+                state.user = null;
+                state.token = null;
             });
     },
 });

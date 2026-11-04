@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-    baseURL: "http://127.0.0.1:8000/api",
+    baseURL: "http://localhost:8080/api",
     headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -105,5 +105,20 @@ export const updateCartItemQuantityApi = async (productId, quantity) => {
 
 export const getMyOrdersApi = async () => {
     const response = await API.get("/v1/orders");
+    return response.data;
+};
+
+export const getAdminOrdersApi = async () => {
+    const response = await API.get("/v1/orders/admin");
+    return response.data;
+};
+export const updateOrderStatusApi = async (orderId, newStatus) => {
+    const response = await API.put(`/v1/orders/${orderId}/status`, {
+        status: newStatus,
+    });
+    return response.data;
+};
+export const signoutApi = async () => {
+    const response = await API.post("/sign-out"); 
     return response.data;
 };
