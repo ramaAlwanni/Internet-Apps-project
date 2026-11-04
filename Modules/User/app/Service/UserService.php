@@ -35,4 +35,18 @@ class UserService
 }
         return ['user' => auth()->user(), 'token' => $token];
     }
+
+    public function signOut(): void
+    {
+        $blacklist = FacadesJWTAuth::manager()->getBlacklist();
+        $gracePeriod = $blacklist->getGracePeriod();
+        // Logout must revoke the token immediately, regardless of the grace period for concurrent requests.
+        $blacklist->setGracePeriod(0);
+
+        try {
+            FacadesJWTAuth::setToken(request()->bearerToken())->invalidate();
+        } finally {
+            $blacklist->setGracePeriod($gracePeriod);
+        }
+    }
 }
