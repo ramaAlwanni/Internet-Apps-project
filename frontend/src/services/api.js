@@ -118,3 +118,7 @@ export const updateOrderStatusApi = async (orderId, newStatus) => {
     });
     return response.data;
 };
+export const signoutApi = async () => {
+    const response = await API.post("/sign-out"); 
+    return response.data;
+};

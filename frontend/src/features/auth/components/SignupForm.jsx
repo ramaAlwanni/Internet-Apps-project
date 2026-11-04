@@ -25,6 +25,23 @@ const SignupForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+      
+        if (
+            !formData.name.trim() ||
+            !formData.email.trim() ||
+            !formData.password.trim() ||
+            !formData.password_confirmation.trim()
+        ) {
+            toast.error("Please fill in all fields!");
+            return;
+        }
+
+        if (formData.password.length < 8) {
+            toast.error("Password must be at least 8 characters long!");
+            return;
+        }
+
+       
         if (formData.password !== formData.password_confirmation) {
             toast.error("Passwords do not match!");
             return;
