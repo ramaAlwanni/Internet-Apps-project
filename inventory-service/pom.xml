@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.2</version> <!-- ?? ???? ??? ????? ????? ????? ?? Java 21 -->
+        <version>3.2.2</version> <!-- تم ضبطه على إصدار مستقر وداعش لـ Java 21 -->
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.example</groupId>
@@ -26,8 +26,8 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
-        
-        <!-- Spring Boot Web (????? ??????? ???? ??? ?????? ??????) -->
+
+        <!-- Spring Boot Web (مطلوب أحياناً لعمل بعض حاويات سبرينغ) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -75,7 +75,7 @@
                 <version>1.7.1</version>
             </extension>
         </extensions>
-        
+
         <plugins>
             <!-- Spring Boot Maven Plugin -->
             <plugin>
@@ -83,7 +83,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
 
-            <!-- Protobuf Maven Plugin ?????? ???????? ???????????? -->
+            <!-- Protobuf Maven Plugin لتوليد الكلاسات أوتوماتيكياً -->
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
@@ -92,7 +92,7 @@
                     <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
                     <pluginId>grpc-java</pluginId>
                     <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
-                    <protoSourceRoot>${project.basedir}/src/main/proto</protoSourceRoot>                
+                    <protoSourceRoot>${project.basedir}/src/main/proto</protoSourceRoot>
                 </configuration>
                 <executions>
                     <execution>
@@ -105,4 +105,4 @@
             </plugin>
         </plugins>
     </build>
-</project>
+</project>

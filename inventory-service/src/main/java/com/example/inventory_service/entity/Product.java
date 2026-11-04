@@ -50,4 +50,4 @@ public class Product {
     public void setAvailableQuantity(Integer availableQuantity) {
         this.availableQuantity = availableQuantity;
     }
-}
+}

@@ -3,7 +3,7 @@
 namespace Modules\Order\Providers;
 
 use InvalidArgumentException;
-use Modules\Order\app\Services\GrpcStockManager;
+use Modules\Order\Services\GrpcStockManager;
 use Modules\Order\Contracts\StockManager;
 use Modules\Order\Services\LocalStockManager;
 use Nwidart\Modules\Support\ModuleServiceProvider;

@@ -7,7 +7,7 @@ option java_package = "com.example.inventory.grpc";
 option java_outer_classname = "InventoryProto";
 
 service InventoryService {
-  rpc GetStockQuantity (StockRequest) returns (StockResponse); 
+  rpc GetStockQuantity (StockRequest) returns (StockResponse);
   rpc ReserveStock (ReserveRequest) returns (ReserveResponse);
   rpc RollbackStock (RollbackRequest) returns (RollbackResponse);
 }
@@ -41,4 +41,4 @@ message RollbackRequest {
 message RollbackResponse {
   bool success = 1;
   string message = 2;
-}
+}

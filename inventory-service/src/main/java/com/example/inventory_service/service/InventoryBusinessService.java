@@ -13,44 +13,44 @@ public class InventoryBusinessService {
     private ProductRepository productRepository;
 
     /**
-     * ??? ?????? ??????? ??????.
+     * جلب الكمية المتاحة للمنتج.
      */
     @Transactional(readOnly = true)
     public int getAvailableQuantity(Long productId) {
         Product product = productRepository.findByIdWithLock(productId)
-                .orElseThrow(() -> new RuntimeException("?????? ??? ????? ?? ID: " + productId));
+                .orElseThrow(() -> new RuntimeException("المنتج غير موجود بـ ID: " + productId));
         return product.getAvailableQuantity();
     }
 
     /**
-     * ??? ???? ?? ?????? ?? ????? ?? ??? Race Condition
+     * حجز كمية من المنتج مع حماية ضد الـ Race Condition
      */
     @Transactional
     public boolean reserveStock(Long productId, int quantity) {
-        // 1. ??????? ?? ????? ????????
+        // 1. القراءة مع القفل التشاؤمي
         Product product = productRepository.findByIdWithLock(productId)
-                .orElseThrow(() -> new RuntimeException("?????? ??? ????? ?? ID: " + productId));
+                .orElseThrow(() -> new RuntimeException("المنتج غير موجود بـ ID: " + productId));
 
-        // 2. ?????? ?? ???? ??????
+        // 2. التحقق من توفر الكمية
         if (product.getAvailableQuantity() < quantity) {
-            return false; // ?????? ??? ?????
+            return false; // الكمية غير كافية
         }
 
-        // 3. ????? ??????
+        // 3. الخصم والحفظ
         product.setAvailableQuantity(product.getAvailableQuantity() - quantity);
         productRepository.save(product);
         return true;
     }
 
     /**
-     * ???? ??????? (Rollback) ?????? ?????? ?? ??? ??? ????? ?? ???????
+     * آلية التعويض (Rollback) لإعادة الكمية في حال فشل الطلب في لارافيل
      */
     @Transactional
     public void rollbackStock(Long productId, int quantity) {
         Product product = productRepository.findByIdWithLock(productId)
-                .orElseThrow(() -> new RuntimeException("?????? ??? ????? ?? ID: " + productId));
+                .orElseThrow(() -> new RuntimeException("المنتج غير موجود بـ ID: " + productId));
 
         product.setAvailableQuantity(product.getAvailableQuantity() + quantity);
         productRepository.save(product);
     }
-}
+}

@@ -47,7 +47,7 @@ public class InventoryGrpcService extends InventoryServiceGrpc.InventoryServiceI
 
             ReserveResponse response = ReserveResponse.newBuilder()
                     .setSuccess(reserved)
-                    .setMessage(reserved ? "?? ????? ?????" : "?????? ??? ??????")
+                    .setMessage(reserved ? "تم الحجز بنجاح" : "الكمية غير متوفرة")
                     .build();
 
             responseObserver.onNext(response);
@@ -69,7 +69,7 @@ public class InventoryGrpcService extends InventoryServiceGrpc.InventoryServiceI
 
             RollbackResponse response = RollbackResponse.newBuilder()
                     .setSuccess(true)
-                    .setMessage("??? ????? ?????? ?????")
+                    .setMessage("تمت إعادة الكمية بنجاح")
                     .build();
 
             responseObserver.onNext(response);
