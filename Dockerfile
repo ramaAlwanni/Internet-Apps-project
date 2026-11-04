@@ -4,6 +4,7 @@ FROM php:8.2-fpm-bookworm AS backend
 RUN apt-get update && apt-get install -y --no-install-recommends \
         nginx \
         supervisor \
+        unzip \
         libfreetype6-dev \
         libicu-dev \
         libjpeg62-turbo-dev \
@@ -22,8 +23,10 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --no-autoloader
 
 COPY . .
+COPY Modules/Product/resources/images/ ./storage/app/public/products/
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader \
-    && mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
+    && mkdir -p storage/app/public/products storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
+    && php artisan storage:link \
     && chown -R www-data:www-data storage bootstrap/cache
 
 COPY docker/nginx.conf /etc/nginx/sites-available/default

@@ -37,6 +37,7 @@ services:
       DB_PASSWORD: "${DB_PASSWORD:-local_dev_password}"
     volumes:
       - ./.env:/var/www/html/.env
+      - product_storage:/var/www/html/storage/app/public
     depends_on:
       mysql:
         condition: service_healthy
@@ -56,6 +57,7 @@ services:
 
 volumes:
   mysql_data:
+  product_storage:
 
 networks:
   app-network:

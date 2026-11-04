@@ -26,6 +26,7 @@
 - **Modular Laravel backend:** Separate `User`, `Product`, `Category`, `Order`, and `Notification` modules.
 - **User access:** Registration and sign-in API logic, with protected resource-route scaffolding.
 - **Product catalog foundation:** Category and product models/migrations, including product price, stock, photo, and category fields.
+- **Optional gRPC inventory service:** Laravel can reserve and roll back stock through a Java service; see [README-gRPC-Inventory.md](./README-gRPC-Inventory.md) for setup.
 - **Database-backed services:** MySQL is configured for local development and in Docker Compose.
 - **Docker Compose environment:** Separate MySQL, Laravel backend, and React frontend services.
 
@@ -168,6 +169,8 @@ docker compose down --volumes
 
 > `docker compose down --volumes` deletes the persisted MySQL data. Use it only when you intend to remove the local database contents.
 
+The backend's `product_storage` volume keeps seeded and uploaded product images available across container rebuilds. `docker compose down --volumes` also deletes this image data.
+
 ## 📂 Project Structure
 
 ```text
@@ -207,4 +210,3 @@ The following build, package, learning, sponsor, contribution, conduct, and secu
 [![Laravel Framework Downloads](https://img.shields.io/packagist/dt/laravel/framework)](https://packagist.org/packages/laravel/framework)
 [![Laravel Framework Version](https://img.shields.io/packagist/v/laravel/framework)](https://packagist.org/packages/laravel/framework)
 [![Laravel Framework License](https://img.shields.io/packagist/l/laravel/framework)](https://packagist.org/packages/laravel/framework)
-
