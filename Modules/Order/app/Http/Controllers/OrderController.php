@@ -27,6 +27,15 @@ class OrderController extends Controller
         ]);
     }
 
+    public function adminIndex()
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'All orders retrieved successfully',
+            'data' => $this->orderService->getAllOrders(),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -74,8 +83,7 @@ class OrderController extends Controller
     {
         $orderData = $this->orderService->getOrderForUser(
             $order,
-            $request->user()->id,
-            $request->user()->hasRole('admin')
+            $request->user()->id
         );
 
         return response()->json([
@@ -84,6 +92,22 @@ class OrderController extends Controller
             'data' => $orderData,
         ]);
     }
+
+    public function adminShow(int $order)
+    {
+        $orderData = $this->orderService->getOrderForUser(
+            $order,
+            0,
+            true
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order details retrieved successfully',
+            'data' => $orderData,
+        ]);
+    }
+
     public function updateStatus(
     UpdateOrderStatusRequest $request,
     Order $order

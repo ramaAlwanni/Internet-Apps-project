@@ -57,6 +57,18 @@ Route::middleware(['auth:api'])->group(function () {
         'store',
     ]);
 
+    Route::middleware('permission:view-all-orders,api')->prefix('admin')->group(function () {
+        Route::get('/', [
+            OrderController::class,
+            'adminIndex',
+        ]);
+
+        Route::get('/{order}', [
+            OrderController::class,
+            'adminShow',
+        ]);
+    });
+
     Route::put('/{order}/status', [
         OrderController::class,
         'updateStatus',

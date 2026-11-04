@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Modules\User\Exceptions\Auth\InvalidCredentialsException;
@@ -85,6 +86,10 @@ $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
                 'message' => $e->getMessage(),
                 'data'    => null,
             ], $e->getHttpCode());
+        });
+
+        $exceptions->render(function (HttpResponseException $e) {
+            return $e->getResponse();
         });
 
         $exceptions->render(function (Throwable $e) {
