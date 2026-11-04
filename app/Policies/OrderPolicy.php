@@ -19,10 +19,12 @@ class OrderPolicy
             && $order->user_id === $user->id;
     }
 
-    public function updateStatus(
-        User $user,
-        Order $order
-    ): bool {
-        return $user->can('change-order-status');
-    }
+  public function updateStatus(
+    User $user,
+    Order $order
+): bool {
+    return $user->hasRole('admin')
+        || $user->can('change-order-status');
+}
+
 }
