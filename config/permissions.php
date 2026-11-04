@@ -3,6 +3,7 @@
 return [
     'permissions' => [
         'view-order-details',
+        'view-all-orders',
         'change-order-status',
     ],
 
@@ -10,10 +11,11 @@ return [
         'admin' => [
             'change-order-status',
             'view-order-details',
+            'view-all-orders',
         ],
 
         'user' => [
-            'view-order-details'
+            'view-order-details',
         ],
 
     ],

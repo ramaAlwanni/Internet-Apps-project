@@ -83,8 +83,7 @@ class OrderController extends Controller
     {
         $orderData = $this->orderService->getOrderForUser(
             $order,
-            $request->user()->id,
-            $request->user()->hasRole('admin')
+            $request->user()->id
         );
 
         return response()->json([

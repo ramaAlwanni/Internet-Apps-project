@@ -50,14 +50,14 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/', [
         OrderController::class,
         'index',
-    ]);
+    ])->middleware('permission:view-order-details,api');
 
     Route::post('/', [
         OrderController::class,
         'store',
     ]);
 
-    Route::middleware('role:admin')->prefix('admin')->group(function () {
+    Route::middleware('permission:view-all-orders,api')->prefix('admin')->group(function () {
         Route::get('/', [
             OrderController::class,
             'adminIndex',
@@ -77,5 +77,5 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('/{order}', [
         OrderController::class,
         'show',
-    ]);
+    ])->middleware('permission:view-order-details,api');
 });
