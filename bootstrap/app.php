@@ -1,5 +1,4 @@
 <?php
-
 use App\Exceptions\BaseException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
