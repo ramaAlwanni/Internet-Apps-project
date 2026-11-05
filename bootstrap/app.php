@@ -11,6 +11,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Modules\User\Exceptions\Auth\InvalidCredentialsException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -51,6 +52,14 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (AuthorizationException $e, $request) {
                 return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to access this resource!',
+                'data' => null
+            ], 403);
+        });
+
+        $exceptions->render(function (AccessDeniedHttpException $e) {
+            return response()->json([
                 'success' => false,
                 'message' => 'You are not authorized to access this resource!',
                 'data' => null

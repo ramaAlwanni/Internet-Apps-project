@@ -28,7 +28,7 @@ class SecurityHeadersTest extends TestCase
 
     public function test_it_adds_hsts_only_for_secure_requests(): void
     {
-        $response = $this->withServerVariables(['HTTPS' => 'on'])->get('/up');
+        $response = $this->get('https://localhost/up');
 
         $response
             ->assertOk()
