@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchAdminOrders } from "../../../redux/slices/adminOrderSlice";
 import {
     Calendar,
     Search,
@@ -5,42 +8,63 @@ import {
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
+import AdminOrderDetailsModal from "./AdminOrderDetailsModal"; 
 
-const AdminOrdersTable = ({ onViewDetails }) => {
-    const orders = [
-        {
-            id: "#ORD-1004",
-            customer: "Razan",
-            date: "Aug 24, 2025 • 10:32 AM",
-            total: "$1,647.00",
-            status: "Delivered",
-            statusBg: "bg-emerald-100 text-emerald-700",
-        },
-        {
-            id: "#ORD-1003",
-            customer: "Razan",
-            date: "Aug 22, 2025 • 06:15 PM",
-            total: "$598.00",
-            status: "Processing",
-            statusBg: "bg-purple-100 text-purple-700",
-        },
-        {
-            id: "#ORD-1002",
-            customer: "Razan",
-            date: "Aug 18, 2025 • 01:42 PM",
-            total: "$876.00",
-            status: "Shipped",
-            statusBg: "bg-blue-100 text-blue-700",
-        },
-        {
-            id: "#ORD-1001",
-            customer: "Razan",
-            date: "Aug 15, 2025 • 11:20 AM",
-            total: "$149.00",
-            status: "Cancelled",
-            statusBg: "bg-gray-200 text-gray-700",
-        },
-    ];
+const AdminOrdersTable = () => {
+    const dispatch = useDispatch();
+    const { orders, loading, error } = useSelector(
+        (state) => state.adminOrders,
+    );
+
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    useEffect(() => {
+        dispatch(fetchAdminOrders());
+    }, [dispatch]);
+
+    const handleViewDetails = (order) => {
+        setSelectedOrder(order);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedOrder(null);
+    };
+
+  
+    const getStatusStyle = (status) => {
+        switch (status?.toLowerCase()) {
+            case "delivered":
+                return "bg-emerald-100 text-emerald-700";
+            case "processing":
+                return "bg-purple-100 text-purple-700";
+            case "shipped":
+                return "bg-blue-100 text-blue-700";
+            case "cancelled":
+                return "bg-gray-200 text-gray-700";
+            case "pending":
+            default:
+                return "bg-amber-100 text-amber-700";
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="text-center py-10 text-[#5c212c] font-bold">
+                Loading orders...
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="text-center py-10 text-rose-600 font-bold">
+                Error: {error}
+            </div>
+        );
+    }
 
     return (
         <div className="w-full flex flex-col gap-6">
@@ -85,48 +109,76 @@ const AdminOrdersTable = ({ onViewDetails }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#823945]/10 text-xs font-medium text-[#5c212c]">
-                            {orders.map((order, idx) => (
-                                <tr
-                                    key={idx}
-                                    className="hover:bg-white/20 transition-colors"
-                                >
-                                    <td className="py-4 px-4 font-extrabold">
-                                        {order.id}
-                                    </td>
-                                    <td className="py-4 px-4">
-                                        {order.customer}
-                                    </td>
-                                    <td className="py-4 px-4 flex items-center gap-1.5 pt-5 text-[#732f3a]/90">
-                                        <Calendar className="w-3.5 h-3.5 text-[#823945]" />
-                                        <span>{order.date}</span>
-                                    </td>
-                                    <td className="py-4 px-4 font-extrabold text-[#5c212c]">
-                                        {order.total}
-                                    </td>
-                                    <td className="py-4 px-4">
-                                        <span
-                                            className={`inline-block px-3 py-1 rounded-full text-[11px] font-bold ${order.statusBg}`}
+                            {orders && orders.length > 0 ? (
+                                orders.map((order) => {
+                                    const dateObj = new Date(order.created_at);
+                                    const formattedDate =
+                                        dateObj.toLocaleDateString("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                        }) +
+                                        " • " +
+                                        dateObj.toLocaleTimeString("en-US", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        });
+
+                                    return (
+                                        <tr
+                                            key={order.id}
+                                            className="hover:bg-white/20 transition-colors"
                                         >
-                                            • {order.status}
-                                        </span>
-                                    </td>
-                                    <td className="py-4 px-4 text-right">
-                                        <button
-                                            type="button"
-                                            onClick={() => onViewDetails(order)}
-                                            className="py-1.5 px-4 rounded-full bg-gradient-to-r from-[#bf707c] via-[#a85764] to-[#823945] text-white text-[11px] font-semibold shadow-md hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer"
-                                        >
-                                            View Details →
-                                        </button>
+                                            <td className="py-4 px-4 font-extrabold">
+                                                #ORD-{order.id}
+                                            </td>
+                                            <td className="py-4 px-4">
+                                                {order.user?.name || "Unknown"}
+                                            </td>
+                                            <td className="py-4 px-4 flex items-center gap-1.5 pt-5 text-[#732f3a]/90">
+                                                <Calendar className="w-3.5 h-3.5 text-[#823945]" />
+                                                <span>{formattedDate}</span>
+                                            </td>
+                                            <td className="py-4 px-4 font-extrabold text-[#5c212c]">
+                                                ${order.total_amount}
+                                            </td>
+                                            <td className="py-4 px-4">
+                                                <span
+                                                    className={`inline-block px-3 py-1 rounded-full text-[11px] font-bold capitalize ${getStatusStyle(order.status)}`}
+                                                >
+                                                    • {order.status}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-4 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleViewDetails(order)
+                                                    }
+                                                    className="py-1.5 px-4 rounded-full bg-gradient-to-r from-[#bf707c] via-[#a85764] to-[#823945] text-white text-[11px] font-semibold shadow-md hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer"
+                                                >
+                                                    View Details →
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            ) : (
+                                <tr>
+                                    <td
+                                        colSpan="6"
+                                        className="text-center py-6 text-[#5c212c]/70"
+                                    >
+                                        No orders found.
                                     </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>
 
                 <div className="flex items-center justify-between pt-5 mt-4 border-t border-[#823945]/15 text-xs font-semibold text-[#732f3a]">
-                    <span>Showing 1 – 4 of 4 orders</span>
+                    <span>Showing {orders.length} orders</span>
                     <div className="flex items-center gap-1">
                         <button className="w-7 h-7 rounded-full bg-white/50 hover:bg-white text-[#5c212c] flex items-center justify-center shadow-xs cursor-pointer">
                             <ChevronLeft className="w-4 h-4" />
@@ -140,6 +192,17 @@ const AdminOrdersTable = ({ onViewDetails }) => {
                     </div>
                 </div>
             </div>
+
+            
+            <AdminOrderDetailsModal
+                key={selectedOrder?.id || "modal"}
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                order={selectedOrder}
+                onStatusUpdated={() => {
+                    dispatch(fetchAdminOrders());
+                }}
+            />
         </div>
     );
 };

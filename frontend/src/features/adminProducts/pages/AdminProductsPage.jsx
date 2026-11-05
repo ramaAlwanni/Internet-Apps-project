@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchCategories } from "../../../redux/slices/categorySlice";
 import { fetchProducts } from "../../../redux/slices/productSlice";
 import AdminHeader from "../../adminOrders/components/AdminHeader";
+
 import ProductCard from "../../homePage/components/ProductCard";
 import ProductDetailsModal from "../../homePage/components/ProductDetailsModal";
 import AddProductModal from "../components/AddProductModal";
