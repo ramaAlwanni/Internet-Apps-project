@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\Catalog\ProductCatalog;
+use App\Contracts\Inventory\InventoryGateway;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Order\Contracts\StockManager;
 use Modules\Order\Models\Order;
@@ -10,6 +12,7 @@ use Modules\Order\Services\LocalStockManager;
 use Modules\Product\Models\Category;
 use Modules\Product\Models\Product;
 use Modules\User\Models\User;
+use RuntimeException;
 use Tests\TestCase;
 
 class DefenseMasterTest extends TestCase
@@ -52,7 +55,10 @@ class DefenseMasterTest extends TestCase
         // This exercises the real reservation and order flow against the
         // test database. Requests run one after another in-process; true
         // parallel locking requires a shared database/service integration test.
-        $this->app->instance(StockManager::class, new LocalStockManager());
+        $this->app->instance(
+            StockManager::class,
+            new LocalStockManager($this->app->make(ProductCatalog::class))
+        );
 
         $product = $this->createProduct(stock: 1);
         $customers = User::factory()->count(8)->create();
@@ -97,39 +103,16 @@ class DefenseMasterTest extends TestCase
     {
         $customer = User::factory()->create();
         $product = $this->createProduct(stock: 1);
-        $grpcState = (object) ['timeout' => null];
-
-        $stockManager = new class($grpcState) extends GrpcStockManager {
-            public function __construct(private object $state)
-            {
-                parent::__construct();
-            }
-
-            protected function getClient()
-            {
-                return new class($this->state) {
-                    public function __construct(private object $state) {}
-
-                    public function ReserveStock($request, array $metadata = [], array $options = [])
-                    {
-                        $this->state->timeout = $options['timeout'] ?? null;
-
-                        return new class {
-                            public function wait(): array
-                            {
-                                return [
-                                    null,
-                                    (object) [
-                                        'code' => 4,
-                                        'details' => 'Deadline exceeded',
-                                    ],
-                                ];
-                            }
-                        };
-                    }
-                };
-            }
-        };
+        $inventory = \Mockery::mock(InventoryGateway::class);
+        $inventory->shouldReceive('reserveProduct')
+            ->once()
+            ->andThrow(new RuntimeException(
+                'Inventory gRPC request failed (4): Deadline exceeded'
+            ));
+        $inventory->shouldReceive('releaseReservation')
+            ->once()
+            ->andReturn(['success' => true, 'message' => 'Released']);
+        $stockManager = new GrpcStockManager($inventory);
 
         $this->app->instance(StockManager::class, $stockManager);
 
@@ -153,7 +136,6 @@ class DefenseMasterTest extends TestCase
             'Deadline exceeded',
             $response->json('message')
         );
-        $this->assertSame(5_000_000, $grpcState->timeout);
         $this->assertDatabaseCount('orders', 0);
     }
 
