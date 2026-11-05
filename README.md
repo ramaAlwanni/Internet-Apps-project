@@ -169,7 +169,7 @@ docker compose down --volumes
 
 > `docker compose down --volumes` deletes the persisted MySQL data. Use it only when you intend to remove the local database contents.
 
-The backend's `product_storage` volume keeps seeded and uploaded product images available across container rebuilds. `docker compose down --volumes` also deletes this image data.
+The backend's `product_images` volume keeps the bundled and uploaded product images available across container rebuilds. It is mounted at the products directory so a newly created volume is initialized from the images in the backend image. `docker compose down --volumes` also deletes this image data. If you previously used the `product_storage` volume, it remains on disk but is no longer used.
 
 ## 📂 Project Structure
 

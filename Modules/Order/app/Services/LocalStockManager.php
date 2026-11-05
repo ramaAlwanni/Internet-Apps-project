@@ -2,21 +2,23 @@
 
 namespace Modules\Order\Services;
 
+use App\Contracts\Catalog\ProductCatalog;
 use Illuminate\Support\Facades\DB;
 use Modules\Order\Contracts\StockManager;
-use Modules\Product\Models\Product;
 use RuntimeException;
 
 class LocalStockManager implements StockManager
 {
+    public function __construct(
+        private readonly ProductCatalog $productCatalog
+    ) {
+    }
+
     public function reserve(
         string $reservationId,
         array $items
     ): array {
-        return DB::transaction(function () use (
-            $reservationId,
-            $items
-        ) {
+        return DB::transaction(function () use ($reservationId, $items) {
             $existingReservation = DB::table('stock_reservations')
                 ->where('id', $reservationId)
                 ->first();
@@ -35,45 +37,7 @@ class LocalStockManager implements StockManager
                 );
             }
 
-            $productIds = collect($items)
-                ->pluck('product_id')
-                ->map(fn ($id) => (int) $id)
-                ->unique()
-                ->values();
-
-            /*
-             * قفل المنتجات لمنع Race Condition.
-             */
-            $products = Product::query()
-                ->whereIn('id', $productIds)
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
-
-            if ($products->count() !== $productIds->count()) {
-                throw new RuntimeException(
-                    'One or more products were not found.'
-                );
-            }
-
-            foreach ($items as $item) {
-                $productId = (int) $item['product_id'];
-                $quantity = (int) $item['quantity'];
-
-                if ($quantity < 1) {
-                    throw new RuntimeException(
-                        'Quantity must be greater than zero.'
-                    );
-                }
-
-                $product = $products->get($productId);
-
-                if ($product->stock < $quantity) {
-                    throw new RuntimeException(
-                        "Insufficient stock for product: {$product->name}"
-                    );
-                }
-            }
+            $this->productCatalog->reserveStock($items);
 
             DB::table('stock_reservations')->insert([
                 'id' => $reservationId,
@@ -83,17 +47,10 @@ class LocalStockManager implements StockManager
             ]);
 
             foreach ($items as $item) {
-                $productId = (int) $item['product_id'];
-                $quantity = (int) $item['quantity'];
-
-                $products
-                    ->get($productId)
-                    ->decrement('stock', $quantity);
-
                 DB::table('stock_reservation_items')->insert([
                     'reservation_id' => $reservationId,
-                    'product_id' => $productId,
-                    'quantity' => $quantity,
+                    'product_id' => (int) $item['product_id'],
+                    'quantity' => (int) $item['quantity'],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -107,9 +64,8 @@ class LocalStockManager implements StockManager
         });
     }
 
-    public function commit(
-        string $reservationId
-    ): array {
+    public function commit(string $reservationId): array
+    {
         $updated = DB::table('stock_reservations')
             ->where('id', $reservationId)
             ->where('status', 'reserved')
@@ -131,9 +87,8 @@ class LocalStockManager implements StockManager
         ];
     }
 
-    public function release(
-        string $reservationId
-    ): array {
+    public function release(string $reservationId): array
+    {
         return DB::transaction(function () use ($reservationId) {
             $reservation = DB::table('stock_reservations')
                 ->where('id', $reservationId)
@@ -162,15 +117,14 @@ class LocalStockManager implements StockManager
 
             $items = DB::table('stock_reservation_items')
                 ->where('reservation_id', $reservationId)
-                ->get();
+                ->get()
+                ->map(fn ($item) => [
+                    'product_id' => (int) $item->product_id,
+                    'quantity' => (int) $item->quantity,
+                ])
+                ->all();
 
-            foreach ($items as $item) {
-                Product::query()
-                    ->where('id', $item->product_id)
-                    ->lockForUpdate()
-                    ->firstOrFail()
-                    ->increment('stock', $item->quantity);
-            }
+            $this->productCatalog->releaseStock($items);
 
             DB::table('stock_reservations')
                 ->where('id', $reservationId)

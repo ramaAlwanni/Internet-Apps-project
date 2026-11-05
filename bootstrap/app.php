@@ -11,6 +11,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Modules\User\Exceptions\Auth\InvalidCredentialsException;
+use Spatie\Permission\Exceptions\UnauthorizedException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -24,7 +25,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
-
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
@@ -57,12 +57,21 @@ return Application::configure(basePath: dirname(__DIR__))
                 'data' => null
             ], 403);
         });
+        $exceptions->render(function (UnauthorizedException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User does not have the right permissions.',
+                'data' => null,
+            ], 403);
+        });
+
 
         $exceptions->render(function (AccessDeniedHttpException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'You are not authorized to access this resource!',
                 'data' => null
+
             ], 403);
         });
 
