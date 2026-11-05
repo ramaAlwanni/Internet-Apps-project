@@ -46,4 +46,14 @@ class UserController extends Controller
 
     }
 
+    /*/**
+     * Handle user logout.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function signOut()
+    {
+            $this->userService->signOut();
+            return $this->successResponse('User signed out successfully', null, 200);
+    }
 }

@@ -17,15 +17,17 @@ class PermissionSyncService
         $roles = Config::get('permissions.roles', []);
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate([
-                'name' => $permission,
-            ]);
+            Permission::updateOrCreate(
+                ['name' => $permission],
+                ['guard_name' => 'api']
+            );
         }
 
         foreach ($roles as $roleName => $permissions) {
-            $role = Role::firstOrCreate([
-                'name' => $roleName,
-            ]);
+            $role = Role::updateOrCreate(
+                ['name' => $roleName],
+                ['guard_name' => 'api']
+            );
 
             if ($roleName === 'super-admin') {
                 $role->syncPermissions(Permission::all());

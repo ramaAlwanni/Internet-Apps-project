@@ -1,16 +1,26 @@
 import { useState } from "react";
+import { useDispatch } from "react-redux";
+import { fetchAdminOrders } from "../../../redux/slices/adminOrderSlice";
+
 import AdminHeader from "../components/AdminHeader";
 import AdminOrdersTable from "../components/AdminOrdersTable";
 import AdminOrderDetailsModal from "../components/AdminOrderDetailsModal";
 import { ClipboardList } from "lucide-react";
 
 const AdminOrdersPage = () => {
+    const dispatch = useDispatch();
+
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const handleOpenModal = (order) => {
         setSelectedOrder(order);
         setIsModalOpen(true);
+    };
+
+   
+    const handleStatusUpdated = () => {
+        return dispatch(fetchAdminOrders());
     };
 
     return (
@@ -35,9 +45,11 @@ const AdminOrdersPage = () => {
             </div>
 
             <AdminOrderDetailsModal
+                key={selectedOrder?.id}
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 order={selectedOrder}
+                onStatusUpdated={handleStatusUpdated}
             />
         </main>
     );

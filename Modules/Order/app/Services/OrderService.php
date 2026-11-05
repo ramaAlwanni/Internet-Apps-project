@@ -101,6 +101,14 @@ class OrderService
             ->get();
     }
 
+    public function getAllOrders()
+    {
+        return Order::query()
+            ->with(['items', 'user'])
+            ->latest()
+            ->get();
+    }
+
     public function getOrderForUser(
         int $orderId,
         int $userId,

@@ -5,12 +5,14 @@ import CartPage from "./features/cart/pages/CartPage";
 import OrdersPage from "./features/orders/pages/OrdersPage";
 import AdminOrdersPage from "./features/adminOrders/pages/AdminOrdersPage";
 import AdminProducts from "./features/adminProducts/pages/AdminProductsPage";
+import SignupPage from "./features/auth/pages/SignupPage";
 
 function App() {
     return (
         <Router>
             <Routes>
                 <Route path="/" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
 
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/cart" element={<CartPage />} />
