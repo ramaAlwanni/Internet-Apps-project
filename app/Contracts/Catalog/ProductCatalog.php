@@ -8,6 +8,8 @@ interface ProductCatalog
 
     public function findByIds(array $productIds): array;
 
+    public function ensureInventoryStock(int $productId, int $initialQuantity): void;
+
     /**
      * Reserve stock and return product snapshots keyed by product ID.
      */

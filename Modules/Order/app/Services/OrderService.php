@@ -5,6 +5,7 @@ namespace Modules\Order\Services;
 use App\Contracts\Catalog\ProductCatalog;
 use App\Contracts\Identity\UserDirectory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Order\Contracts\StockManager;
 use Modules\Order\Models\Order;
@@ -88,14 +89,58 @@ class OrderService
                 return $order->load('items');
             });
 
-            $this->stockManager->commit($reservationId);
-
-            return $order;
         } catch (\Throwable $exception) {
-            $this->stockManager->release($reservationId);
+            try {
+                $release = $this->stockManager->release($reservationId);
+            } catch (\Throwable $releaseException) {
+                Log::critical('Failed to release inventory after order creation failed.', [
+                    'reservation_id' => $reservationId,
+                    'exception' => $releaseException,
+                ]);
+                throw new \RuntimeException(
+                    $exception->getMessage()
+                        . '; inventory reservation release failed: '
+                        . $releaseException->getMessage(),
+                    0,
+                    $exception
+                );
+            }
+            if (!$release['success']) {
+                Log::critical('Failed to release inventory after order creation failed.', [
+                    'reservation_id' => $reservationId,
+                    'error' => $release['message'],
+                ]);
+                throw new \RuntimeException(
+                    $exception->getMessage()
+                        . '; inventory reservation release failed: '
+                        . $release['message'],
+                    0,
+                    $exception
+                );
+            }
 
             throw $exception;
         }
+
+        try {
+            $commit = $this->stockManager->commit($reservationId);
+            if (!$commit['success']) {
+                throw new \RuntimeException($commit['message'] ?: 'Inventory reservation could not be committed.');
+            }
+        } catch (\Throwable $exception) {
+            Log::critical('Order was saved but its inventory reservation could not be committed.', [
+                'order_id' => $order->id,
+                'reservation_id' => $reservationId,
+                'exception' => $exception,
+            ]);
+            throw new \RuntimeException(
+                "Order {$order->id} was saved, but inventory reservation confirmation failed.",
+                0,
+                $exception
+            );
+        }
+
+        return $order;
     }
 
     public function getUserOrders(int $userId)

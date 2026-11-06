@@ -3,17 +3,23 @@
 namespace Modules\Product\Services;
 
 use App\Contracts\Catalog\ProductCatalog;
+use App\Contracts\Inventory\InventoryGateway;
 use Modules\Product\Models\Product;
 use RuntimeException;
 
 class ProductCatalogService implements ProductCatalog
 {
+    public function __construct(
+        private readonly InventoryGateway $inventory
+    ) {
+    }
+
     public function findById(int $productId): ?array
     {
         $product = Product::query()->find($productId);
 
         return $product
-            ? $this->snapshot($product)
+            ? $this->snapshotWithInventory($product)
             : null;
     }
 
@@ -23,9 +29,16 @@ class ProductCatalogService implements ProductCatalog
             ->whereIn('id', array_map('intval', $productIds))
             ->get()
             ->mapWithKeys(fn (Product $product) => [
-                (int) $product->id => $this->snapshot($product),
+                (int) $product->id => $this->snapshotWithInventory($product),
             ])
             ->all();
+    }
+
+    public function ensureInventoryStock(int $productId, int $initialQuantity): void
+    {
+        if ($this->usesGrpcInventory()) {
+            $this->inventory->ensureProductStock($productId, $initialQuantity);
+        }
     }
 
     public function reserveStock(array $items): array
@@ -117,5 +130,24 @@ class ProductCatalogService implements ProductCatalog
             'stock' => (int) $product->stock,
             'photo_url' => $product->photo_url,
         ];
+    }
+
+    private function snapshotWithInventory(Product $product): array
+    {
+        $snapshot = $this->snapshot($product);
+        if (!$this->usesGrpcInventory()) {
+            return $snapshot;
+        }
+
+        $productId = (int) $product->id;
+        $this->inventory->ensureProductStock($productId, (int) $product->stock);
+        $snapshot['stock'] = $this->inventory->getAvailableQuantity($productId);
+
+        return $snapshot;
+    }
+
+    private function usesGrpcInventory(): bool
+    {
+        return config('order.stock_manager', 'local') === 'grpc';
     }
 }

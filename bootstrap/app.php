@@ -1,4 +1,5 @@
 <?php
+
 use App\Exceptions\BaseException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -22,34 +23,20 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-    $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
-
-    $middleware->alias([
-        'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-        'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-        'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-    ]);
-})
-//     ->withMiddleware(function (Middleware $middleware): void {
-// $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
-
-//     $middleware->alias([
-//         'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-//         'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-//         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-//     ]);
-// })
-    //     $middleware->alias([
-    //         'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-    //         'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-    //         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-    //     ]);
-    // })
+        $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        
+        $middleware->alias([
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+        ]);
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
         /**
          * For this exceptions:
          * we don't need to register the message in the log file
-         *  because it is a business exception and we will handle it in the render method
+         * because it is a business exception and we will handle it in the render method
          */
         $exceptions->dontReport([
             ValidationException::class,
@@ -71,7 +58,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 'data' => null
             ], 403);
         });
-
         $exceptions->render(function (UnauthorizedException $e) {
             return response()->json([
                 'success' => false,
@@ -80,11 +66,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ], 403);
         });
 
+
         $exceptions->render(function (AccessDeniedHttpException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'You are not authorized to access this resource!',
-                'data' => null,
+                'data' => null
+
             ], 403);
         });
 
@@ -130,3 +118,4 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
     })->create();
+
