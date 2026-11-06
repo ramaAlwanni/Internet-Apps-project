@@ -2,7 +2,8 @@
 
 namespace Modules\Order\Providers;
 
-use Illuminate\Support\ServiceProvider;
+use InvalidArgumentException;
+use Modules\Order\Services\GrpcStockManager;
 use Modules\Order\Contracts\StockManager;
 use Modules\Order\Services\LocalStockManager;
 use Nwidart\Modules\Support\ModuleServiceProvider;
@@ -22,10 +23,15 @@ class OrderServiceProvider extends ModuleServiceProvider
     {
         parent::register();
 
-        $this->app->bind(
-            StockManager::class,
-            LocalStockManager::class
-        );
+        $stockManager = match (config('order.stock_manager', 'local')) {
+            'local' => LocalStockManager::class,
+            'grpc' => GrpcStockManager::class,
+            default => throw new InvalidArgumentException(
+                'ORDER_STOCK_MANAGER must be either "local" or "grpc".'
+            ),
+        };
+
+        $this->app->bind(StockManager::class, $stockManager);
     }
 
     public function boot(): void

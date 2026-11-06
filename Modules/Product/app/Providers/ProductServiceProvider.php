@@ -2,6 +2,8 @@
 
 namespace Modules\Product\Providers;
 
+use App\Contracts\Catalog\ProductCatalog;
+use Modules\Product\Services\ProductCatalogService;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 use Illuminate\Console\Scheduling\Schedule;
 
@@ -33,6 +35,16 @@ class ProductServiceProvider extends ModuleServiceProvider
         EventServiceProvider::class,
         RouteServiceProvider::class,
     ];
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->bind(
+            ProductCatalog::class,
+            ProductCatalogService::class
+        );
+    }
 
     /**
      * Define module schedules.

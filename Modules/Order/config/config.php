@@ -16,4 +16,9 @@ return [
         'ORDER_STOCK_MANAGER',
         'local'
     ),
+
+    'grpc_inventory_host' => env(
+        'GRPC_INVENTORY_HOST',
+        '127.0.0.1:9090'
+    ),
 ];

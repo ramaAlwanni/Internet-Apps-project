@@ -3,6 +3,8 @@
 namespace Modules\Order\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Catalog\ProductCatalog;
+use App\Rules\ProductExists;
 use Illuminate\Http\Request;
 use Modules\Order\Services\OrderService;
 use Throwable;
@@ -12,7 +14,8 @@ use Modules\Order\Models\Order;
 class OrderController extends Controller
 {
     public function __construct(
-        private readonly OrderService $orderService
+        private readonly OrderService $orderService,
+        private readonly ProductCatalog $productCatalog
     ) {
     }
 
@@ -49,7 +52,7 @@ class OrderController extends Controller
                 'required',
                 'integer',
                 'distinct',
-                'exists:products,id',
+                new ProductExists($this->productCatalog),
             ],
 
             'items.*.quantity' => [

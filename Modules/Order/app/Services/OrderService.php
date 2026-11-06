@@ -2,16 +2,20 @@
 
 namespace Modules\Order\Services;
 
+use App\Contracts\Catalog\ProductCatalog;
+use App\Contracts\Identity\UserDirectory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Order\Contracts\StockManager;
 use Modules\Order\Models\Order;
-use Modules\Product\Models\Product;
 
 class OrderService
 {
     public function __construct(
-        private readonly StockManager $stockManager
+        private readonly StockManager $stockManager,
+        private readonly ProductCatalog $productCatalog,
+        private readonly UserDirectory $userDirectory
     ) {
     }
 
@@ -27,52 +31,55 @@ class OrderService
         );
 
         if (!$reservation['success']) {
-            throw new \RuntimeException(
-                $reservation['message']
-            );
+            throw new \RuntimeException($reservation['message']);
         }
 
         try {
-            $order = DB::transaction(function () use (
-                $userId,
-                $items
-            ) {
+            $order = DB::transaction(function () use ($userId, $items) {
                 $productIds = collect($items)
                     ->pluck('product_id')
                     ->map(fn ($id) => (int) $id)
                     ->unique()
-                    ->values();
+                    ->values()
+                    ->all();
 
-                $products = Product::query()
-                    ->whereIn('id', $productIds)
-                    ->get()
-                    ->keyBy('id');
+                $products = $this->productCatalog->findByIds($productIds);
+
+                if (count($products) !== count($productIds)) {
+                    throw new \RuntimeException(
+                        'One or more products were not found.'
+                    );
+                }
 
                 $totalAmount = 0;
                 $orderItems = [];
 
                 foreach ($items as $item) {
-                    $product = $products->get(
-                        (int) $item['product_id']
-                    );
-
+                    $productId = (int) $item['product_id'];
+                    $product = $products[$productId] ?? null;
                     $quantity = (int) $item['quantity'];
 
-                    $totalAmount +=
-                        (float) $product->price * $quantity;
+                    if (!$product) {
+                        throw new \RuntimeException(
+                            'One or more products were not found.'
+                        );
+                    }
+
+                    $totalAmount += (float) $product['price'] * $quantity;
 
                     $orderItems[] = [
-                        'product_id' => $product->id,
-                        'product_name' => $product->name,
-                        'unit_price' => $product->price,
+                        'product_id' => $productId,
+                        'product_name' => $product['name'],
+                        'unit_price' => $product['price'],
                         'quantity' => $quantity,
+                        'subtotal' => (float) $product['price'] * $quantity,
                     ];
                 }
 
                 $order = Order::create([
                     'user_id' => $userId,
                     'total_amount' => $totalAmount,
-                    'status' => 'pending',
+                    'status' => Order::STATUS_PENDING,
                 ]);
 
                 foreach ($orderItems as $item) {
@@ -82,14 +89,58 @@ class OrderService
                 return $order->load('items');
             });
 
-            $this->stockManager->commit($reservationId);
-
-            return $order;
         } catch (\Throwable $exception) {
-            $this->stockManager->release($reservationId);
+            try {
+                $release = $this->stockManager->release($reservationId);
+            } catch (\Throwable $releaseException) {
+                Log::critical('Failed to release inventory after order creation failed.', [
+                    'reservation_id' => $reservationId,
+                    'exception' => $releaseException,
+                ]);
+                throw new \RuntimeException(
+                    $exception->getMessage()
+                        . '; inventory reservation release failed: '
+                        . $releaseException->getMessage(),
+                    0,
+                    $exception
+                );
+            }
+            if (!$release['success']) {
+                Log::critical('Failed to release inventory after order creation failed.', [
+                    'reservation_id' => $reservationId,
+                    'error' => $release['message'],
+                ]);
+                throw new \RuntimeException(
+                    $exception->getMessage()
+                        . '; inventory reservation release failed: '
+                        . $release['message'],
+                    0,
+                    $exception
+                );
+            }
 
             throw $exception;
         }
+
+        try {
+            $commit = $this->stockManager->commit($reservationId);
+            if (!$commit['success']) {
+                throw new \RuntimeException($commit['message'] ?: 'Inventory reservation could not be committed.');
+            }
+        } catch (\Throwable $exception) {
+            Log::critical('Order was saved but its inventory reservation could not be committed.', [
+                'order_id' => $order->id,
+                'reservation_id' => $reservationId,
+                'exception' => $exception,
+            ]);
+            throw new \RuntimeException(
+                "Order {$order->id} was saved, but inventory reservation confirmation failed.",
+                0,
+                $exception
+            );
+        }
+
+        return $order;
     }
 
     public function getUserOrders(int $userId)
@@ -104,9 +155,17 @@ class OrderService
     public function getAllOrders()
     {
         return Order::query()
-            ->with(['items', 'user'])
+            ->with('items')
             ->latest()
-            ->get();
+            ->get()
+            ->map(function (Order $order) {
+                $order->setAttribute(
+                    'customer',
+                    $this->userDirectory->findBasicById((int) $order->user_id)
+                );
+
+                return $order;
+            });
     }
 
     public function getOrderForUser(
@@ -124,59 +183,46 @@ class OrderService
 
         return $query->firstOrFail();
     }
+
     public function updateStatus(
-    int $orderId,
-    string $newStatus
-): Order {
-    return DB::transaction(function () use (
-        $orderId,
-        $newStatus
-    ) {
-        $order = Order::query()
-            ->lockForUpdate()
-            ->findOrFail($orderId);
+        int $orderId,
+        string $newStatus
+    ): Order {
+        return DB::transaction(function () use ($orderId, $newStatus) {
+            $order = Order::query()
+                ->lockForUpdate()
+                ->findOrFail($orderId);
 
-        $allowedTransitions = [
-            Order::STATUS_PENDING => [
-                Order::STATUS_CONFIRMED,
-                Order::STATUS_CANCELLED,
-            ],
+            $allowedTransitions = [
+                Order::STATUS_PENDING => [
+                    Order::STATUS_CONFIRMED,
+                    Order::STATUS_CANCELLED,
+                ],
+                Order::STATUS_CONFIRMED => [
+                    Order::STATUS_PROCESSING,
+                    Order::STATUS_CANCELLED,
+                ],
+                Order::STATUS_PROCESSING => [
+                    Order::STATUS_SHIPPED,
+                ],
+                Order::STATUS_SHIPPED => [
+                    Order::STATUS_DELIVERED,
+                ],
+                Order::STATUS_DELIVERED => [],
+                Order::STATUS_CANCELLED => [],
+            ];
 
-            Order::STATUS_CONFIRMED => [
-                Order::STATUS_PROCESSING,
-                Order::STATUS_CANCELLED,
-            ],
+            $allowedStatuses = $allowedTransitions[$order->status] ?? [];
 
-            Order::STATUS_PROCESSING => [
-                Order::STATUS_SHIPPED,
-            ],
+            if (!in_array($newStatus, $allowedStatuses, true)) {
+                throw new \RuntimeException(
+                    "Cannot change order status from {$order->status} to {$newStatus}."
+                );
+            }
 
-            Order::STATUS_SHIPPED => [
-                Order::STATUS_DELIVERED,
-            ],
+            $order->update(['status' => $newStatus]);
 
-            Order::STATUS_DELIVERED => [],
-
-            Order::STATUS_CANCELLED => [],
-        ];
-
-        $currentStatus = $order->status;
-
-        $allowedStatuses = $allowedTransitions[$currentStatus] ?? [];
-
-        if (!in_array($newStatus, $allowedStatuses, true)) {
-            throw new \RuntimeException(
-                "Cannot change order status from "
-                . "{$currentStatus} to {$newStatus}."
-            );
-        }
-
-        $order->update([
-            'status' => $newStatus,
-        ]);
-
-        return $order->load('items');
-    });
-}
-
+            return $order->load('items');
+        });
+    }
 }

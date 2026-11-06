@@ -2,23 +2,25 @@
 
 namespace Modules\Order\Services;
 
-use Illuminate\Support\Facades\DB;
+use App\Contracts\Catalog\ProductCatalog;
 use Modules\Order\Models\Cart;
 use Modules\Order\Models\CartItem;
-use Modules\Product\Models\Product;
 use RuntimeException;
 
 class CartService
 {
+    public function __construct(
+        private readonly ProductCatalog $productCatalog
+    ) {
+    }
+
     public function getCart(int $userId): Cart
     {
         $cart = Cart::firstOrCreate([
             'user_id' => $userId,
         ]);
 
-        return $cart->load([
-            'items.product.category',
-        ]);
+        return $this->hydrateProducts($cart->load('items'));
     }
 
     public function addItem(
@@ -32,11 +34,15 @@ class CartService
             );
         }
 
-        $product = Product::findOrFail($productId);
+        $product = $this->productCatalog->findById($productId);
 
-        if ($product->stock < $quantity) {
+        if (!$product) {
+            throw new RuntimeException('Product not found.');
+        }
+
+        if ($product['stock'] < $quantity) {
             throw new RuntimeException(
-                "Only {$product->stock} items are available."
+                "Only {$product['stock']} items are available."
             );
         }
 
@@ -52,9 +58,9 @@ class CartService
         $newQuantity = ($cartItem->exists ? $cartItem->quantity : 0)
             + $quantity;
 
-        if ($newQuantity > $product->stock) {
+        if ($newQuantity > $product['stock']) {
             throw new RuntimeException(
-                "Only {$product->stock} items are available."
+                "Only {$product['stock']} items are available."
             );
         }
 
@@ -75,11 +81,15 @@ class CartService
             );
         }
 
-        $product = Product::findOrFail($productId);
+        $product = $this->productCatalog->findById($productId);
 
-        if ($quantity > $product->stock) {
+        if (!$product) {
+            throw new RuntimeException('Product not found.');
+        }
+
+        if ($quantity > $product['stock']) {
             throw new RuntimeException(
-                "Only {$product->stock} items are available."
+                "Only {$product['stock']} items are available."
             );
         }
 
@@ -96,10 +106,8 @@ class CartService
         return $this->getCart($userId);
     }
 
-    public function removeItem(
-        int $userId,
-        int $productId
-    ): Cart {
+    public function removeItem(int $userId, int $productId): Cart
+    {
         $cart = Cart::where('user_id', $userId)->first();
 
         if (!$cart) {
@@ -143,5 +151,21 @@ class CartService
             })
             ->values()
             ->all();
+    }
+
+    private function hydrateProducts(Cart $cart): Cart
+    {
+        $products = $this->productCatalog->findByIds(
+            $cart->items->pluck('product_id')->all()
+        );
+
+        $cart->items->each(function (CartItem $item) use ($products) {
+            $item->setRelation(
+                'product',
+                $products[(int) $item->product_id] ?? null
+            );
+        });
+
+        return $cart;
     }
 }
