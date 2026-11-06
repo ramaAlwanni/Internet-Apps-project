@@ -4,7 +4,6 @@ namespace Modules\Order\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Modules\User\Models\User;
 
 class Order extends Model
 {
@@ -42,11 +41,6 @@ class Order extends Model
             self::STATUS_DELIVERED,
             self::STATUS_CANCELLED,
         ];
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
     }
 
     public function items()

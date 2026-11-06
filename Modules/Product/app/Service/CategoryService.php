@@ -1,14 +1,14 @@
 <?php
 
 namespace Modules\Product\Service;
-namespace Modules\Product\Exceptions;
-use App\Exceptions\BaseException;
+
 use Modules\Product\Exceptions\CategoryHasProductsException;
 use Illuminate\Database\Eloquent\Collection;
 use Modules\Product\Models\Category;
 
 class CategoryService
 {
+
 
     public function list(): Collection
     {

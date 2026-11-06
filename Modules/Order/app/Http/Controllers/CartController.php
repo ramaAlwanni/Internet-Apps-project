@@ -2,7 +2,9 @@
 
 namespace Modules\Order\Http\Controllers;
 
+use App\Contracts\Catalog\ProductCatalog;
 use App\Http\Controllers\Controller;
+use App\Rules\ProductExists;
 use Illuminate\Http\Request;
 use Modules\Order\Services\CartService;
 use Modules\Order\Services\OrderService;
@@ -12,7 +14,8 @@ class CartController extends Controller
 {
     public function __construct(
         private readonly CartService $cartService,
-        private readonly OrderService $orderService
+        private readonly OrderService $orderService,
+        private readonly ProductCatalog $productCatalog
     ) {
     }
 
@@ -45,7 +48,7 @@ class CartController extends Controller
             'product_id' => [
                 'required',
                 'integer',
-                'exists:products,id',
+                new ProductExists($this->productCatalog),
             ],
 
             'quantity' => [
