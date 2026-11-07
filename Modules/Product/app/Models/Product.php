@@ -4,6 +4,8 @@ namespace Modules\Product\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
+
 
 class Product extends Model
 {
@@ -28,9 +30,12 @@ class Product extends Model
     protected $appends = ['photo_url'];
 
     public function getPhotoUrlAttribute(): ?string
-    {
-        return $this->photo ? asset('storage/' . $this->photo) : null;
-    }
+{
+    return $this->photo
+        ? Storage::disk('public')->url($this->photo)
+        : null;
+}
+
 
     public function category()
     {

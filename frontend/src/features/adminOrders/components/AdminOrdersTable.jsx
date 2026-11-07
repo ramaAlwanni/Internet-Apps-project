@@ -1,14 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAdminOrders } from "../../../redux/slices/adminOrderSlice";
-import {
-    Calendar,
-    Search,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-} from "lucide-react";
-import AdminOrderDetailsModal from "./AdminOrderDetailsModal"; 
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import AdminOrderDetailsModal from "./AdminOrderDetailsModal";
 
 const AdminOrdersTable = () => {
     const dispatch = useDispatch();
@@ -33,7 +27,6 @@ const AdminOrdersTable = () => {
         setSelectedOrder(null);
     };
 
-  
     const getStatusStyle = (status) => {
         switch (status?.toLowerCase()) {
             case "delivered":
@@ -69,28 +62,9 @@ const AdminOrdersTable = () => {
     return (
         <div className="w-full flex flex-col gap-6">
             <div className="w-full flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    <button className="bg-white/60 border border-[#823945]/20 rounded-full py-2.5 px-5 text-[#5c212c] text-xs font-semibold flex items-center gap-2 shadow-inner cursor-pointer">
-                        <Calendar className="w-3.5 h-3.5 text-[#823945]" />
-                        <span>All Dates</span>
-                        <ChevronDown className="w-3.5 h-3.5 opacity-70" />
-                    </button>
+                <div className="flex items-center gap-3 w-full md:w-auto"></div>
 
-                    <button className="bg-white/60 border border-[#823945]/20 rounded-full py-2.5 px-5 text-[#5c212c] text-xs font-semibold flex items-center gap-2 shadow-inner cursor-pointer">
-                        <span className="w-2 h-2 rounded-full bg-[#823945]"></span>
-                        <span>All Statuses</span>
-                        <ChevronDown className="w-3.5 h-3.5 opacity-70" />
-                    </button>
-                </div>
-
-                <div className="relative w-full md:w-80">
-                    <input
-                        type="text"
-                        placeholder="Search by order number..."
-                        className="w-full bg-white/60 border border-[#823945]/20 rounded-full py-2.5 pl-10 pr-4 text-[#5c212c] placeholder-[#823945]/60 text-xs font-medium focus:outline-none focus:border-[#823945] shadow-inner"
-                    />
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#823945]/70" />
-                </div>
+                <div className="relative w-full md:w-80"></div>
             </div>
 
             <div className="w-full bg-[#df9fa8]/50 backdrop-blur-md rounded-[36px] p-6 border border-white/40 shadow-2xl flex flex-col">
@@ -193,7 +167,6 @@ const AdminOrdersTable = () => {
                 </div>
             </div>
 
-            
             <AdminOrderDetailsModal
                 key={selectedOrder?.id || "modal"}
                 isOpen={isModalOpen}
