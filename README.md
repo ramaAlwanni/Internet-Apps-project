@@ -26,8 +26,10 @@
 - **Modular Laravel backend:** Separate `User`, `Product`, `Category`, `Order`, and `Notification` modules.
 - **User access:** Registration and sign-in API logic, with protected resource-route scaffolding.
 - **Product catalog foundation:** Category and product models/migrations, including product price, stock, photo, and category fields.
-- **Database-backed services:** MySQL is configured for local development and in Docker Compose.
-- **Docker Compose environment:** Separate MySQL, Laravel backend, and React frontend services.
+- **gRPC inventory service:** Laravel and Java communicate over gRPC; inventory quantities and persistent reservations are stored in a database dedicated to the Java service.
+- **Separate service databases:** Laravel owns catalog and order data in `mysql`; Java owns available stock and reservations in `inventory-db`.
+- **Requirement 2 walkthrough:** See [README-REQUIREMENT-2.md](README-REQUIREMENT-2.md) for the architecture, code flow, database ownership, and verification steps.
+- **Docker Compose environment:** Laravel MySQL, inventory MySQL, Java gRPC inventory, Laravel backend, and React frontend services.
 
 
 
@@ -39,6 +41,8 @@
 - [Composer](https://getcomposer.org/) 2
 - [Node.js](https://nodejs.org/) **22+** and npm
 - MySQL **8.x** (the Compose service uses MySQL 8.4)
+- Java **21** (only needed to run the gRPC service locally; Docker builds it otherwise)
+- PHP gRPC extension (only needed when Laravel runs locally with gRPC enabled)
 
 ### Docker
 
@@ -64,7 +68,19 @@
    php artisan migrate
    ```
 
-4. Start the Laravel backend in one terminal:
+4. To use inventory over gRPC locally, set `ORDER_STOCK_MANAGER=grpc` and `GRPC_INVENTORY_HOST=127.0.0.1:9090` in `.env`. Start Java with a separate inventory database:
+
+   ```powershell
+   $env:SPRING_DATASOURCE_URL = "jdbc:mysql://127.0.0.1:3306/inventory_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+   $env:INVENTORY_DB_USERNAME = "inventory"
+   $env:INVENTORY_DB_PASSWORD = "inventory_dev_password"
+   Set-Location inventory-service
+   .\mvnw.cmd spring-boot:run
+   ```
+
+   The inventory service creates its own tables from `inventory-service/src/main/resources/schema.sql`. Laravel initializes inventory records for existing products on first catalog access; the Laravel `products.stock` value is only the initial quantity for a missing inventory record. Keep `ORDER_STOCK_MANAGER=local` if you do not want to run the Java service.
+
+5. Start the Laravel backend in one terminal:
 
    ```powershell
    php artisan serve
@@ -72,7 +88,7 @@
 
    The backend is available at [http://localhost:8000](http://localhost:8000).
 
-5. In another terminal, install and start the React frontend:
+6. In another terminal, install and start the React frontend:
 
    ```powershell
    Set-Location frontend
@@ -84,53 +100,34 @@
 
 ## 🐳 Docker: Build and Run
 
-Docker Compose starts three services:
+Docker Compose builds and starts the database, schema migration, Java gRPC inventory service, Laravel backend, and React frontend:
 
 | Service / container | Purpose | Host access |
 |---|---|---|
 | `frontend` | React + Vite development server | [http://localhost:5173](http://localhost:5173) |
 | `backend` | Laravel application served by Nginx/PHP-FPM | [http://localhost:8080](http://localhost:8080) |
+| `inventory-service` | Java gRPC stock service | `127.0.0.1:9090` |
 | `mysql` | MySQL database | `127.0.0.1:3307` (MySQL client; not a browser URL) |
+| `inventory-db` | Inventory database, private to the Compose network | No host port exposed |
 
-The ports on the host are configurable with `FRONTEND_PORT`, `BACKEND_PORT`, and `DB_FORWARD_PORT` in `.env`. Inside the Compose network, the backend connects to the database at `mysql:3306`.
+The ports on the host are configurable with `FRONTEND_PORT`, `BACKEND_PORT`, `DB_FORWARD_PORT`, and `GRPC_FORWARD_PORT` in `.env`. Inside the Compose network, Laravel uses `mysql:3306`, the inventory service uses the separate `inventory-db:3306` database, and Laravel calls gRPC at `inventory-service:9090`.
 
-### 1. Prepare environment and build the images
-
-
-For build images and run the containers :
+### 1. Prepare the environment, build, and start all services
 
 ```powershell
-docker compose up --build -d
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+docker compose build
+docker compose run --rm --no-deps backend php artisan key:generate
+docker compose up -d
 ```
 
-Check container status and wait for MySQL to become healthy:
+Compose waits for both databases, runs Laravel migrations, then starts the inventory service and backend. The Java service creates the independent inventory schema on startup. Check service status with:
 
 ```powershell
 docker compose ps
 ```
 
-### 2. Initialize the backend from inside its container
-
-Open a shell in the backend container:
-
-```powershell
-docker compose exec backend sh
-```
-
-Then run these commands at the container prompt:
-
-```sh
-php artisan key:generate
-php artisan migrate --force
-```
-
-Exit the container shell when finished:
-
-```sh
-exit
-```
-
-The backend image already installs Composer dependencies during the build. Do not run `composer install` inside the container unless you intentionally change the dependency installation workflow.
+For migrations added later, run `docker compose run --rm migrate`. The backend image already installs Composer dependencies during the build; do not run `composer install` inside the container unless you intentionally change the dependency installation workflow.
 
 ### 3. Open or access an individual container
 
@@ -139,7 +136,9 @@ Run the matching command from the repository root:
 ```powershell
 docker compose exec backend sh
 docker compose exec frontend sh
+docker compose exec inventory-service sh
 docker compose exec mysql sh
+docker compose exec inventory-db sh
 ```
 
 To open a MySQL client inside the database container instead of a shell:
@@ -148,7 +147,7 @@ To open a MySQL client inside the database container instead of a shell:
 docker compose exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
 ```
 
-Use the browser links in the table above to open the frontend or backend. MySQL is a database service, not a website; connect to `127.0.0.1:3307` with a MySQL client. From other containers, use host `mysql` and port `3306`.
+Use the browser links in the table above to open the frontend or backend. MySQL is a database service, not a website; connect to `127.0.0.1:3307` with a MySQL client. From the backend, use host `mysql` and port `3306`. The inventory service connects only to `inventory-db:3306`.
 
 ### Useful Compose commands
 
@@ -166,7 +165,9 @@ docker compose down
 docker compose down --volumes
 ```
 
-> `docker compose down --volumes` deletes the persisted MySQL data. Use it only when you intend to remove the local database contents.
+> `docker compose down --volumes` deletes both persisted MySQL databases and product-image data. Use it only when you intend to remove the local data.
+
+The backend's `product_images` volume keeps the bundled and uploaded product images available across container rebuilds. It is mounted at the products directory so a newly created volume is initialized from the images in the backend image. `docker compose down --volumes` also deletes this image data. If you previously used the `product_storage` volume, it remains on disk but is no longer used.
 
 ## 📂 Project Structure
 
@@ -188,16 +189,26 @@ docker compose down --volumes
 ├── routes/                 # Application-level Laravel routes
 ├── tests/                  # Laravel feature and unit tests
 ├── Dockerfile              # Backend image
-└── docker-compose.yml      # MySQL, backend, and frontend services
+└── docker-compose.yml      # Separate MySQL databases, migrations, gRPC inventory, backend, and frontend
 ```
 
 ## 🧪 Tests
 
-Run the Laravel test suite with:
+Run the Laravel tests with:
 
 ```powershell
 composer test
 ```
+
+The PHPUnit bootstrap forces tests to use an in-memory SQLite database and the local stock manager, then exits before Laravel starts if those safeguards or PDO SQLite are unavailable. This prevents inherited Docker/MySQL environment variables from redirecting destructive test migrations to the application database.
+
+To run the live inventory integration tests, first start the Compose services, then run:
+
+```powershell
+docker compose run --rm --no-deps -e RUN_INVENTORY_INTEGRATION_TESTS=1 backend php artisan test --testsuite=Integration
+```
+
+These tests contact the running gRPC inventory service, use generated test-only product IDs, and verify stock reads, reservation/release, concurrent reservations, order-failure compensation, an unavailable service, a nonresponsive service exceeding the five-second deadline, and commit behavior. They do not use or modify Laravel's MySQL database. The inventory database retains the synthetic test product rows; they are not catalog products.
 
 ## 📚 Laravel Framework Resources
 
@@ -207,4 +218,3 @@ The following build, package, learning, sponsor, contribution, conduct, and secu
 [![Laravel Framework Downloads](https://img.shields.io/packagist/dt/laravel/framework)](https://packagist.org/packages/laravel/framework)
 [![Laravel Framework Version](https://img.shields.io/packagist/v/laravel/framework)](https://packagist.org/packages/laravel/framework)
 [![Laravel Framework License](https://img.shields.io/packagist/l/laravel/framework)](https://packagist.org/packages/laravel/framework)
-

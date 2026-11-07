@@ -1,173 +1,104 @@
 <?php
 
-namespace Modules\Order\app\Services;
+namespace Modules\Order\Services;
 
-use Inventory\ReserveRequest;
-use Inventory\RollbackRequest;
-use Inventory\InventoryServiceClient;
+use App\Contracts\Inventory\InventoryGateway;
+use Illuminate\Support\Facades\Log;
 use Modules\Order\Contracts\StockManager;
+use Throwable;
 
 class GrpcStockManager implements StockManager
 {
-    protected string $serverAddr;
-
-    /**
-     * @var array<string, array<int, array{product_id:int, quantity:int}>>
-     */
-    protected array $reservationItems = [];
-
-    public function __construct()
-    {
-        $this->serverAddr = env('GRPC_INVENTORY_HOST', 'localhost:9090');
-    }
-
-    protected function getClient()
-    {
-        $credentials = \Grpc\ChannelCredentials::createInsecure();
-
-        return new InventoryServiceClient($this->serverAddr, [
-            'credentials' => $credentials,
-        ]);
-    }
-
-    /**
-     * Executes a gRPC call with a timeout to avoid hanging forever.
-     */
-    protected function callWithTimeout($client, string $method, $request, int $timeoutMicroseconds = 5000000): array
-    {
-        $call = $client->{$method}($request, [
-            'timeout' => $timeoutMicroseconds,
-        ]);
-
-        return $call->wait();
+    public function __construct(
+        private readonly InventoryGateway $inventory
+    ) {
     }
 
     public function reserve(string $reservationId, array $items): array
     {
-        $client = $this->getClient();
-        $reservedItems = [];
-
         try {
+            $quantities = [];
             foreach ($items as $item) {
-                $request = new ReserveRequest();
-                $request->setProductId((int) $item['product_id']);
-                $request->setQuantity((int) $item['quantity']);
-                $request->setOrderRefId($reservationId);
-
-                list($response, $status) = $this->callWithTimeout($client, 'ReserveStock', $request);
-
-                if ($status->code !== 0) {
-                    $this->rollbackPartial($reservationId, $reservedItems);
+                $productId = (int) ($item['product_id'] ?? 0);
+                $quantity = (int) ($item['quantity'] ?? 0);
+                if ($productId <= 0 || $quantity <= 0) {
                     return [
                         'success' => false,
-                        'message' => 'فشل الاتصال بخدمة المستودع: ' . ($status->details ?? 'Unknown error'),
+                        'message' => 'Product ID and quantity must be greater than zero.',
                     ];
                 }
 
-                if ($response instanceof \Inventory\ReserveResponse && !$response->getSuccess()) {
-                    $this->rollbackPartial($reservationId, $reservedItems);
-                    return [
-                        'success' => false,
-                        'message' => $response->getMessage() ?: 'الكمية غير متوفرة للمنتج: ' . $item['product_id'],
-                    ];
-                }
+                $quantities[$productId] = ($quantities[$productId] ?? 0) + $quantity;
+            }
 
-                $reservedItems[] = [
-                    'product_id' => (int) $item['product_id'],
-                    'quantity' => (int) $item['quantity'],
+            if ($quantities === []) {
+                return [
+                    'success' => false,
+                    'message' => 'At least one product is required for a reservation.',
                 ];
             }
 
-            $this->reservationItems[$reservationId] = $reservedItems;
+            foreach ($quantities as $productId => $quantity) {
+                $result = $this->inventory->reserveProduct(
+                    $reservationId,
+                    (int) $productId,
+                    $quantity
+                );
+                if (!$result['success']) {
+                    return $this->failure(
+                        $reservationId,
+                        $result['message'] ?: "Unable to reserve product {$productId}."
+                    );
+                }
+            }
 
             return [
                 'success' => true,
-                'message' => 'Stock reserved successfully via gRPC',
+                'message' => 'Stock reserved successfully via gRPC.',
+                'reservation_id' => $reservationId,
             ];
-        } catch (\Throwable $e) {
-            $this->rollbackPartial($reservationId, $reservedItems);
-            return [
-                'success' => false,
-                'message' => 'خطأ استثنائي في اتصال gRPC: ' . $e->getMessage(),
-            ];
+        } catch (Throwable $exception) {
+            Log::error('Inventory gRPC reservation request failed.', [
+                'reservation_id' => $reservationId,
+                'exception' => $exception,
+            ]);
+            return $this->failure($reservationId, 'Inventory gRPC error: ' . $exception->getMessage());
         }
     }
 
     public function commit(string $reservationId): array
     {
-        unset($this->reservationItems[$reservationId]);
-
-        return [
-            'success' => true,
-            'message' => 'Stock reservation committed',
-        ];
+        return $this->inventory->commitReservation($reservationId);
     }
 
     public function release(string $reservationId): array
     {
-        $items = $this->reservationItems[$reservationId] ?? [];
-
-        return $this->rollbackPartial($reservationId, $items);
+        return $this->inventory->releaseReservation($reservationId);
     }
 
-    private function rollbackPartial(string $reservationId, array $items = []): array
+    private function failure(string $reservationId, string $message): array
     {
         try {
-            if (empty($items)) {
-                unset($this->reservationItems[$reservationId]);
-
-                return [
-                    'success' => true,
-                    'message' => 'No stock reservation items to rollback',
-                ];
+            $release = $this->inventory->releaseReservation($reservationId);
+            if (!$release['success']) {
+                Log::critical('Failed to release a partial inventory reservation.', [
+                    'reservation_id' => $reservationId,
+                    'error' => $release['message'],
+                ]);
+                $message .= '; reservation release failed: ' . $release['message'];
             }
-
-            $client = $this->getClient();
-
-            foreach ($items as $item) {
-                $request = new RollbackRequest();
-                $request->setProductId((int) $item['product_id']);
-                $request->setQuantity((int) $item['quantity']);
-                $request->setOrderRefId($reservationId);
-
-                list($response, $status) = $this->callWithTimeout($client, 'RollbackStock', $request);
-
-                if ($status->code !== 0) {
-                    if (function_exists('logger')) {
-                        logger()->error("Failed to rollback stock for order: {$reservationId}");
-                    }
-
-                    unset($this->reservationItems[$reservationId]);
-
-                    return [
-                        'success' => false,
-                        'message' => 'فشل الـ Rollback: ' . ($status->details ?? 'Unknown error'),
-                    ];
-                }
-
-                if ($response instanceof \Inventory\RollbackResponse && !$response->getSuccess()) {
-                    unset($this->reservationItems[$reservationId]);
-
-                    return [
-                        'success' => false,
-                        'message' => $response->getMessage() ?: 'فشل إعادة الكمية للمنتج: ' . $item['product_id'],
-                    ];
-                }
-            }
-
-            unset($this->reservationItems[$reservationId]);
-
-            return [
-                'success' => true,
-                'message' => 'Stock released successfully',
-            ];
-        } catch (\Throwable $e) {
-            unset($this->reservationItems[$reservationId]);
-
-            return [
-                'success' => false,
-                'message' => 'خطأ في الـ Rollback: ' . $e->getMessage(),
-            ];
+        } catch (Throwable $releaseException) {
+            Log::critical('Failed to release a partial inventory reservation.', [
+                'reservation_id' => $reservationId,
+                'exception' => $releaseException,
+            ]);
+            $message .= '; reservation release failed: ' . $releaseException->getMessage();
         }
+
+        return [
+            'success' => false,
+            'message' => $message,
+            'reservation_id' => $reservationId,
+        ];
     }
 }

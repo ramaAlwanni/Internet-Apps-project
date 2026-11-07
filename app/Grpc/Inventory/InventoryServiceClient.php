@@ -12,6 +12,40 @@ class InventoryServiceClient extends BaseStub
     }
 
     /**
+     * @param \Inventory\StockRequest $argument
+     * @param array $metadata
+     * @param array $options
+     * @return \Grpc\UnaryCall
+     */
+    public function GetStockQuantity(\Inventory\StockRequest $argument, $metadata = [], $options = [])
+    {
+        return $this->_simpleRequest(
+            '/inventory.InventoryService/GetStockQuantity',
+            $argument,
+            ['\\Inventory\\StockResponse', 'decode'],
+            $metadata,
+            $options
+        );
+    }
+
+    /**
+     * @param \Inventory\ReserveRequest $argument
+     * @param array $metadata
+     * @param array $options
+     * @return \Grpc\UnaryCall
+     */
+    public function EnsureProductStock(\Inventory\ReserveRequest $argument, $metadata = [], $options = [])
+    {
+        return $this->_simpleRequest(
+            '/inventory.InventoryService/EnsureProductStock',
+            $argument,
+            ['\\Inventory\\ReserveResponse', 'decode'],
+            $metadata,
+            $options
+        );
+    }
+
+    /**
      * @param \Inventory\ReserveRequest $argument
      * @param array $metadata
      * @param array $options
@@ -21,6 +55,40 @@ class InventoryServiceClient extends BaseStub
     {
         return $this->_simpleRequest(
             '/inventory.InventoryService/ReserveStock',
+            $argument,
+            ['\\Inventory\\ReserveResponse', 'decode'],
+            $metadata,
+            $options
+        );
+    }
+
+    /**
+     * @param \Inventory\ReserveRequest $argument
+     * @param array $metadata
+     * @param array $options
+     * @return \Grpc\UnaryCall
+     */
+    public function CommitReservation(\Inventory\ReserveRequest $argument, $metadata = [], $options = [])
+    {
+        return $this->_simpleRequest(
+            '/inventory.InventoryService/CommitReservation',
+            $argument,
+            ['\\Inventory\\ReserveResponse', 'decode'],
+            $metadata,
+            $options
+        );
+    }
+
+    /**
+     * @param \Inventory\ReserveRequest $argument
+     * @param array $metadata
+     * @param array $options
+     * @return \Grpc\UnaryCall
+     */
+    public function ReleaseReservation(\Inventory\ReserveRequest $argument, $metadata = [], $options = [])
+    {
+        return $this->_simpleRequest(
+            '/inventory.InventoryService/ReleaseReservation',
             $argument,
             ['\\Inventory\\ReserveResponse', 'decode'],
             $metadata,
