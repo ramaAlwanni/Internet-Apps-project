@@ -2,6 +2,7 @@
 
 namespace Modules\Product\Service;
 
+use App\Contracts\Catalog\ProductCatalog;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Modules\Product\Exceptions\ProductImageUploadException;
@@ -10,6 +11,11 @@ use Throwable;
 
 class ProductService
 {
+    public function __construct(
+        private readonly ProductCatalog $productCatalog
+    ) {
+    }
+
     public function addProduct(array $data): Product
     {
         // 1) خزّني الصورة بـ storage/app/public/products
@@ -24,7 +30,14 @@ class ProductService
         // 2) أنشئي المنتج. إذا فشل، احذفي الصورة حتى ما تبقى ملفات يتيمة
         try {
             $product = Product::create($data);
+            $this->productCatalog->ensureInventoryStock(
+                (int) $product->id,
+                (int) $product->stock
+            );
         } catch (Throwable $e) {
+            if (isset($product)) {
+                $product->delete();
+            }
             Storage::disk('public')->delete($path);
             throw $e;
         }
@@ -36,7 +49,7 @@ class ProductService
     {
         $perPage = $filters['per_page'] ?? 10;
 
-        return Product::with('category')
+        $products = Product::with('category')
             ->when(
                 $filters['category_id'] ?? null,
                 fn ($query, $categoryId) => $query->where('category_id', $categoryId)
@@ -44,6 +57,17 @@ class ProductService
             ->latest('id')
             ->paginate($perPage)
             ->withQueryString(); // حتى روابط الصفحة التالية تحتفظ بالفلتر
+
+        $snapshots = $this->productCatalog->findByIds(
+            $products->getCollection()->pluck('id')->all()
+        );
+        $products->getCollection()->each(function (Product $product) use ($snapshots): void {
+            if (isset($snapshots[(int) $product->id])) {
+                $product->setAttribute('stock', $snapshots[(int) $product->id]['stock']);
+            }
+        });
+
+        return $products;
     }
 }
 

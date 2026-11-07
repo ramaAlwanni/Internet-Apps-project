@@ -3,7 +3,6 @@
 namespace Modules\Order\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Modules\Product\Models\Product;
 
 class CartItem extends Model
 {
@@ -26,13 +25,15 @@ class CartItem extends Model
         return $this->belongsTo(Cart::class);
     }
 
-    public function product()
-    {
-        return $this->belongsTo(Product::class);
-    }
-
     public function getSubtotalAttribute(): float
     {
-        return (float) $this->product->price * $this->quantity;
+        $product = $this->relationLoaded('product')
+            ? $this->getRelation('product')
+            : null;
+        $price = is_array($product)
+            ? ($product['price'] ?? 0)
+            : ($product?->price ?? 0);
+
+        return (float) $price * $this->quantity;
     }
 }

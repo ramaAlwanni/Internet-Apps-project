@@ -9,4 +9,5 @@ frontend/node_modules
 vendor
 public/build
 public/hot
+storage/app/public/**
 storage/logs/*

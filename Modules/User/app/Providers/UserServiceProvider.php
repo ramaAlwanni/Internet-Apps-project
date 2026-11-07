@@ -2,6 +2,8 @@
 
 namespace Modules\User\Providers;
 
+use App\Contracts\Identity\UserDirectory;
+use Modules\User\Services\UserDirectoryService;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -37,6 +39,16 @@ class UserServiceProvider extends ModuleServiceProvider
         EventServiceProvider::class,
         RouteServiceProvider::class,
     ];
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->bind(
+            UserDirectory::class,
+            UserDirectoryService::class
+        );
+    }
 
     /**
      * Define module schedules.
