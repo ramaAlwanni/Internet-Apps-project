@@ -2,8 +2,9 @@
 
 namespace Modules\Product\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Modules\Product\Database\Factories\ProductFactory;
 
 class Product extends Model
 {
@@ -22,7 +23,6 @@ class Product extends Model
         'price' => 'decimal:2',
     ];
 
-    // مسار الملف الداخلي ما منبعتو للعميل، منبعت photo_url بدالو
     protected $hidden = ['photo'];
 
     protected $appends = ['photo_url'];
@@ -36,29 +36,9 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    protected static function newFactory(): ProductFactory
+    {
+        return ProductFactory::new();
+    }
 }
-
-// namespace Modules\Product\Models;
-
-// use Illuminate\Database\Eloquent\Model;
-// use Illuminate\Database\Eloquent\Factories\HasFactory;
-// //use Modules\Product\Models\Category;
-
-// class Product extends Model
-// {
-//     use HasFactory;
-
-//     protected $fillable = [
-//         'name',
-//         'description',
-//         'price',
-//         'photo',
-//         'stock',
-//         'category_id',
-//     ];
-
-//     public function category()
-//     {
-//         return $this->belongsTo(Category::class);
-//     }
-// }

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Modules\Product\Models\Category;
 use Modules\Product\Models\Product;
+Use Modules\Product\Database\Seeders\ProductSeeder;
 
 class ProductDatabaseSeeder extends Seeder
 {
@@ -16,6 +17,10 @@ class ProductDatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+
+
+        $products =  Product::factory()->count(10000)->create();
+
         foreach (['phone.jpg', 'headphones.jpg', 'keyboard.jpg'] as $image) {
             $source = base_path("Modules/Product/resources/images/{$image}");
 
@@ -58,5 +63,6 @@ class ProductDatabaseSeeder extends Seeder
             'stock' => 15,
             'category_id' => $category->id,
         ]);
+
     }
 }

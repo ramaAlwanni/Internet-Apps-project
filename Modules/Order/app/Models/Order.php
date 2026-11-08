@@ -4,6 +4,9 @@ namespace Modules\Order\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Order\Database\Factories\OrderFactory;
+use Modules\User\Models\User;
 
 class Order extends Model
 {
@@ -46,5 +49,15 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    protected static function newFactory(): OrderFactory
+    {
+        return OrderFactory::new();
     }
 }

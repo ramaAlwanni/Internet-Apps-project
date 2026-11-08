@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Exceptions;
+namespace Modules\Product\Exceptions;
+
+use App\Exceptions\BaseException;
 
 class CategoryHasProductsException extends BaseException
 {
