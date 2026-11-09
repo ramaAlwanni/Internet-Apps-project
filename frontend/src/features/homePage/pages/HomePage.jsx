@@ -5,7 +5,7 @@ import { fetchCategories } from "../../../redux/slices/categorySlice";
 import { fetchProducts } from "../../../redux/slices/productSlice";
 import ProductCard from "../components/ProductCard";
 import ProductDetailsModal from "../components/ProductDetailsModal";
-import { Search, Filter } from "lucide-react";
+import { Filter } from "lucide-react";
 
 const HomePage = () => {
     const dispatch = useDispatch();
@@ -60,14 +60,14 @@ const HomePage = () => {
 
                 <div className="w-full bg-[#df9fa8]/50 backdrop-blur-md rounded-[36px] p-6 md:p-8 border border-white/40 shadow-2xl">
                     <div className="w-full flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
-                        <div className="relative w-full md:w-1/2">
+                        {/* <div className="relative w-full md:w-1/2">
                             <input
                                 type="text"
                                 placeholder="Search for products..."
                                 className="w-full bg-white/60 border border-[#823945]/20 rounded-full py-2.5 pl-10 pr-4 text-[#5c212c] placeholder-[#823945]/60 text-sm font-medium focus:outline-none focus:border-[#823945] shadow-inner"
                             />
                             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#823945]/70" />
-                        </div>
+                        </div> */}
 
                         <div className="relative w-full md:w-auto">
                             <button

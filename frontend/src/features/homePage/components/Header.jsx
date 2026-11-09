@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { Bell, LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import NotificationsDropdown from "../../notifications/components/NotificationsDropdown";
-import { logoutUser } from "../../auth/authSlice"; 
+import { logoutUser } from "../../auth/authSlice";
 
 const Header = () => {
     const navigate = useNavigate();
@@ -86,7 +86,7 @@ const Header = () => {
             <div className="flex items-center gap-5">
                 {/* Notifications */}
                 <div className="relative">
-                    <button
+                    {/* <button
                         type="button"
                         onClick={() =>
                             setIsNotificationsOpen(!isNotificationsOpen)
@@ -97,7 +97,7 @@ const Header = () => {
                         <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-extrabold flex items-center justify-center shadow-xs">
                             3
                         </span>
-                    </button>
+                    </button> */}
 
                     <NotificationsDropdown
                         isOpen={isNotificationsOpen}
