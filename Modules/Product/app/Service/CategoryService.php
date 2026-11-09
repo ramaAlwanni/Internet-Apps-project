@@ -2,13 +2,14 @@
 
 namespace Modules\Product\Service;
 
-use App\Exceptions\CategoryHasProductsException as ExceptionsCategoryHasProductsException;
-use Illuminate\Database\Eloquent\Collection;
 use Modules\Product\Exceptions\CategoryHasProductsException;
+use Illuminate\Database\Eloquent\Collection;
 use Modules\Product\Models\Category;
 
 class CategoryService
 {
+
+
     public function list(): Collection
     {
         return Category::orderBy('name')->get();
@@ -29,7 +30,7 @@ class CategoryService
     public function delete(Category $category): void
     {
         if ($category->products()->exists()) {
-            throw new ExceptionsCategoryHasProductsException();
+          throw new CategoryHasProductsException();
         }
 
         $category->delete();

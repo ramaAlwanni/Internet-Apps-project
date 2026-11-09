@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Modules\User\Tests\Feature;
 
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
