@@ -196,10 +196,17 @@ const AddProductModal = ({ isOpen, onClose }) => {
                                     <input
                                         type="number"
                                         step="0.01"
+                                        min="0"
                                         value={price}
-                                        onChange={(e) =>
-                                            setPrice(e.target.value)
-                                        }
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (
+                                                val === "" ||
+                                                Number(val) >= 0
+                                            ) {
+                                                setPrice(val);
+                                            }
+                                        }}
                                         placeholder="0.00"
                                         required
                                         className="w-full bg-white/60 border border-[#823945]/20 rounded-full py-2.5 pl-4 pr-8 text-[#5c212c] placeholder-[#823945]/50 text-xs font-medium focus:outline-none focus:border-[#823945] shadow-inner"
@@ -214,8 +221,14 @@ const AddProductModal = ({ isOpen, onClose }) => {
                                 </label>
                                 <input
                                     type="number"
+                                    min="0"
                                     value={stock}
-                                    onChange={(e) => setStock(e.target.value)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === "" || Number(val) >= 0) {
+                                            setStock(val);
+                                        }
+                                    }}
                                     placeholder="Qty..."
                                     required
                                     className="w-full bg-white/60 border border-[#823945]/20 rounded-full py-2.5 px-4 text-[#5c212c] placeholder-[#823945]/50 text-xs font-medium focus:outline-none focus:border-[#823945] shadow-inner"
