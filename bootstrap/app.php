@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
@@ -35,7 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         /**
          * For this exceptions:
          * we don't need to register the message in the log file
-         *  because it is a business exception and we will handle it in the render method
+         * because it is a business exception and we will handle it in the render method
          */
         $exceptions->dontReport([
             ValidationException::class,
@@ -117,3 +118,4 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
     })->create();
+
