@@ -2,10 +2,14 @@
 
 namespace Modules\Order\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Modules\Order\Database\Factories\OrderItemFactory;
 
 class OrderItem extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'order_id',
         'product_id',
@@ -28,4 +32,8 @@ class OrderItem extends Model
         );
     }
 
+    protected static function newFactory(): OrderItemFactory
+    {
+        return OrderItemFactory::new();
+    }
 }

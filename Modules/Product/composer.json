@@ -18,13 +18,13 @@
     "autoload": {
         "psr-4": {
             "Modules\\Product\\": "app/",
-            "Modules\\Product\\Database\\Factories\\": "database/factories/",
-            "Modules\\Product\\Database\\Seeders\\": "database/seeders/"
+            "Modules\\Product\\Database\\Factories\\": "Database/Factories/",
+            "Modules\\Product\\Database\\Seeders\\": "Database/Seeders/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Modules\\Product\\Tests\\": "tests/"
+            "Modules\\Product\\Tests\\": "Tests/"
         }
     }
 }

@@ -59,7 +59,7 @@
    if (-not (Test-Path .env)) { Copy-Item .env.example .env }
    ```
 
-2. Edit `.env` for your local MySQL server. Set `DB_HOST=127.0.0.1`, and provide the database name, username, and password for a database you have created.
+2. Edit `.env` for your local MySQL server. Set `DB_HOST`, `DB_WRITE_HOST`, and `DB_READ_HOST` to `127.0.0.1`, and provide the database name, username, and password for a database you have created.
 
 3. Generate the application key and apply database migrations:
 
@@ -100,17 +100,18 @@
 
 ## 🐳 Docker: Build and Run
 
-Docker Compose builds and starts the database, schema migration, Java gRPC inventory service, Laravel backend, and React frontend:
+Docker Compose builds and starts the MySQL primary and asynchronously replicated read replica, schema migration, Java gRPC inventory service, Laravel backend, and React frontend:
 
 | Service / container | Purpose | Host access |
 |---|---|---|
 | `frontend` | React + Vite development server | [http://localhost:5173](http://localhost:5173) |
 | `backend` | Laravel application served by Nginx/PHP-FPM | [http://localhost:8080](http://localhost:8080) |
 | `inventory-service` | Java gRPC stock service | `127.0.0.1:9090` |
-| `mysql` | MySQL database | `127.0.0.1:3307` (MySQL client; not a browser URL) |
+| `mysql-primary` | Laravel MySQL write primary | `127.0.0.1:3307` (MySQL client; not a browser URL) |
+| `mysql-replica` | Asynchronous Laravel MySQL read replica | Private to the Compose network |
 | `inventory-db` | Inventory database, private to the Compose network | No host port exposed |
 
-The ports on the host are configurable with `FRONTEND_PORT`, `BACKEND_PORT`, `DB_FORWARD_PORT`, and `GRPC_FORWARD_PORT` in `.env`. Inside the Compose network, Laravel uses `mysql:3306`, the inventory service uses the separate `inventory-db:3306` database, and Laravel calls gRPC at `inventory-service:9090`.
+The ports on the host are configurable with `FRONTEND_PORT`, `BACKEND_PORT`, `DB_FORWARD_PORT`, and `GRPC_FORWARD_PORT` in `.env`. Inside the Compose network, Laravel writes to `mysql-primary:3306` and reads from `mysql-replica:3306`; the inventory service uses the separate `inventory-db:3306` database, and Laravel calls gRPC at `inventory-service:9090`. Set a strong `DB_REPLICATION_PASSWORD` in `.env` before using this setup outside local development.
 
 ### 1. Prepare the environment, build, and start all services
 
@@ -121,7 +122,7 @@ docker compose run --rm --no-deps backend php artisan key:generate
 docker compose up -d
 ```
 
-Compose waits for both databases, runs Laravel migrations, then starts the inventory service and backend. The Java service creates the independent inventory schema on startup. Check service status with:
+Compose waits for the primary and replica (including both replication threads), runs Laravel migrations against the primary, then starts the inventory service and backend. The Java service creates the independent inventory schema on startup. Check service status with:
 
 ```powershell
 docker compose ps
@@ -137,17 +138,18 @@ Run the matching command from the repository root:
 docker compose exec backend sh
 docker compose exec frontend sh
 docker compose exec inventory-service sh
-docker compose exec mysql sh
+docker compose exec mysql-primary sh
+docker compose exec mysql-replica sh
 docker compose exec inventory-db sh
 ```
 
 To open a MySQL client inside the database container instead of a shell:
 
 ```powershell
-docker compose exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+docker compose exec mysql-primary sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
 ```
 
-Use the browser links in the table above to open the frontend or backend. MySQL is a database service, not a website; connect to `127.0.0.1:3307` with a MySQL client. From the backend, use host `mysql` and port `3306`. The inventory service connects only to `inventory-db:3306`.
+Use the browser links in the table above to open the frontend or backend. MySQL is a database service, not a website; connect to the primary at `127.0.0.1:3307` with a MySQL client. The replica is private to `app-network`. The primary, replica, and inventory MySQL data volumes persist independently. The automatic replication account and replica initialization run only for fresh data volumes. When migrating from the former `mysql` Compose service, its `mysql_data` volume is kept separate from the new `mysql_primary_data` volume. Back up the application database, stop the old container without removing its volume, restore the dump to the new primary, and only then start the fresh replica so it can replicate the restored schema and data. Do not delete existing volumes just to trigger initialization.
 
 ### Useful Compose commands
 
@@ -165,7 +167,7 @@ docker compose down
 docker compose down --volumes
 ```
 
-> `docker compose down --volumes` deletes both persisted MySQL databases and product-image data. Use it only when you intend to remove the local data.
+> `docker compose down --volumes` deletes the primary, replica, and inventory MySQL databases as well as product-image data. Use it only when you intend to remove the local data.
 
 The backend's `product_images` volume keeps the bundled and uploaded product images available across container rebuilds. It is mounted at the products directory so a newly created volume is initialized from the images in the backend image. `docker compose down --volumes` also deletes this image data. If you previously used the `product_storage` volume, it remains on disk but is no longer used.
 
@@ -189,7 +191,7 @@ The backend's `product_images` volume keeps the bundled and uploaded product ima
 ├── routes/                 # Application-level Laravel routes
 ├── tests/                  # Laravel feature and unit tests
 ├── Dockerfile              # Backend image
-└── docker-compose.yml      # Separate MySQL databases, migrations, gRPC inventory, backend, and frontend
+└── docker-compose.yml      # MySQL primary/replica, inventory, migrations, backend, and frontend
 ```
 
 ## 🧪 Tests
@@ -209,6 +211,25 @@ docker compose run --rm --no-deps -e RUN_INVENTORY_INTEGRATION_TESTS=1 backend p
 ```
 
 These tests contact the running gRPC inventory service, use generated test-only product IDs, and verify stock reads, reservation/release, concurrent reservations, order-failure compensation, an unavailable service, a nonresponsive service exceeding the five-second deadline, and commit behavior. They do not use or modify Laravel's MySQL database. The inventory database retains the synthetic test product rows; they are not catalog products.
+
+### Verify MySQL read/write routing with k6
+
+The k6 verification script logs in with an administrator account, creates one order, then immediately requests that order through the admin read endpoint. This is intentionally one iteration by default because each successful iteration creates an order and consumes one unit of inventory. `PRODUCT_ID` must identify a product that exists in the catalog and inventory service and has available stock. The account must have permission to view all orders.
+
+Set the credentials and product ID in the current PowerShell session, then run the test from the repository root:
+
+```powershell
+$env:TEST_EMAIL = "admin@example.com"
+$env:TEST_PASSWORD = "<admin-password>"
+$env:PRODUCT_ID = "1"
+docker compose --profile load-test run --rm --no-deps `
+  -e TEST_EMAIL -e TEST_PASSWORD -e PRODUCT_ID -e TEST_ITERATIONS -e TEST_VUS `
+  k6
+```
+
+The script uses `http://backend` when run inside Compose. To change it, set `API_BASE_URL` and pass `-e API_BASE_URL`. Results include `order_write_duration` and `order_immediate_read_duration`. The `checks` threshold requires the write and immediate read assertions to pass. Use `TEST_ITERATIONS` and `TEST_VUS` to increase the load only with dedicated test data and enough inventory; both default to `1`.
+
+Important: Laravel's `sticky => true` routes reads to the write PDO only after a write **within the same Laravel request/connection lifecycle**. A k6 POST and the following GET are two separate HTTP requests, so sticky alone does not guarantee read-your-writes across them. This test detects whether the order is immediately visible through the read endpoint; a failure points to replica lag or a need for an application-level consistency strategy (for example, directing the immediate follow-up read to the primary). A successful immediate read does not by itself prove which database host served it; verify routing separately using database-side connection/query monitoring.
 
 ## 📚 Laravel Framework Resources
 

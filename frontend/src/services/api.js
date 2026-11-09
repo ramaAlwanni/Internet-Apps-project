@@ -2,6 +2,7 @@ import axios from "axios";
 
 const API = axios.create({
     baseURL: "http://localhost:8080/api",
+    // baseURL: "http://127.0.0.1:8000/api",
     headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -119,6 +120,6 @@ export const updateOrderStatusApi = async (orderId, newStatus) => {
     return response.data;
 };
 export const signoutApi = async () => {
-    const response = await API.post("/sign-out"); 
+    const response = await API.post("/sign-out");
     return response.data;
 };

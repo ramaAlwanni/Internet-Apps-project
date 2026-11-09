@@ -5,7 +5,6 @@ namespace Modules\Product\Providers;
 use App\Contracts\Catalog\ProductCatalog;
 use Modules\Product\Services\ProductCatalogService;
 use Nwidart\Modules\Support\ModuleServiceProvider;
-use Illuminate\Console\Scheduling\Schedule;
 
 class ProductServiceProvider extends ModuleServiceProvider
 {
@@ -46,9 +45,16 @@ class ProductServiceProvider extends ModuleServiceProvider
         );
     }
 
+    public function boot(): void
+    {
+        parent::boot();
+
+        $this->loadMigrationsFrom(module_path($this->name, 'Database/migrations'));
+    }
+
     /**
      * Define module schedules.
-     * 
+     *
      * @param $schedule
      */
     // protected function configureSchedules(Schedule $schedule): void

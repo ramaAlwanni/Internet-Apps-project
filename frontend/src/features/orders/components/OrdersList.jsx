@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchMyOrders } from "../../../redux/slices/orderSlice";
 import { ChevronRight } from "lucide-react";
-import productImg from "../../../assets/login-hero.jpg";
+
 
 const OrdersList = ({ onSelectOrder }) => {
     const dispatch = useDispatch();
@@ -63,15 +63,11 @@ const OrdersList = ({ onSelectOrder }) => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {order.items?.slice(0, 2).map((item, idx) => (
+                            {/* {order.items?.slice(0, 2).map((item, idx) => (
                                 <div key={idx} className="w-10 h-10 rounded-[10px] overflow-hidden border border-white/40 shrink-0 bg-gray-100">
-                                    <img
-                                        src={item.product?.photo_url || productImg}
-                                        alt="Thumb"
-                                        className="w-full h-full object-cover"
-                                    />
+                                  
                                 </div>
-                            ))}
+                            ))} */}
                             {itemsCount > 2 && (
                                 <div className="w-10 h-10 rounded-[10px] bg-white/50 border border-white/40 flex items-center justify-center text-xs font-bold text-[#823945]">
                                     +{itemsCount - 2}

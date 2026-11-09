@@ -1,5 +1,4 @@
 import { Calendar, Truck, ArrowLeft } from "lucide-react";
-import productImg from "../../../assets/login-hero.jpg";
 
 const OrderDetails = ({ order, onBack }) => {
     if (!order) {
@@ -75,16 +74,9 @@ const OrderDetails = ({ order, onBack }) => {
                                 key={item.id}
                                 className="flex items-center gap-3 bg-white/30 p-2 rounded-[16px] border border-white/30"
                             >
-                                <div className="w-12 h-12 rounded-[12px] overflow-hidden border border-white/40 shrink-0 bg-gray-100">
-                                    <img
-                                        src={
-                                            item.product?.photo_url ||
-                                            productImg
-                                        }
-                                        alt={item.product_name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
+                                {/* <div className="w-12 h-12 rounded-[12px] overflow-hidden border border-white/40 shrink-0 bg-gray-100">
+                                   
+                                </div> */}
                                 <div className="flex-1 min-w-0">
                                     <h5 className="text-xs font-bold text-[#5c212c] truncate">
                                         {item.product_name}
