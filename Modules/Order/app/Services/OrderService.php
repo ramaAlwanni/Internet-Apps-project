@@ -145,27 +145,46 @@ class OrderService
 
     public function getUserOrders(int $userId)
     {
-        return Order::query()
-            ->with('items')
-            ->where('user_id', $userId)
-            ->latest()
-            ->get();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        try {
+            $orders = Order::query()
+                ->with('items')
+                ->where('user_id', $userId)
+                ->latest()
+                ->get();
+
+            Log::info('User orders query count.', [
+                'user_id' => $userId,
+                'query_count' => count(DB::getQueryLog()),
+            ]);
+
+            return $orders;
+        } finally {
+            DB::disableQueryLog();
+        }
     }
 
     public function getAllOrders()
     {
-        return Order::query()
-            ->with('items')
-            ->latest()
-            ->get()
-            ->map(function (Order $order) {
-                $order->setAttribute(
-                    'customer',
-                    $this->userDirectory->findBasicById((int) $order->user_id)
-                );
+        DB::flushQueryLog();
+        DB::enableQueryLog();
 
-                return $order;
-            });
+        try {
+            $orders = Order::query()
+                ->with(['items', 'user'])
+                ->latest()
+                ->paginate(15);
+
+            Log::info('All orders query count.', [
+                'query_count' => count(DB::getQueryLog()),
+            ]);
+
+            return $orders;
+        } finally {
+            DB::disableQueryLog();
+        }
     }
 
     public function getOrderForUser(
