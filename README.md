@@ -151,6 +151,8 @@ docker compose exec mysql-primary sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWOR
 
 Use the browser links in the table above to open the frontend or backend. MySQL is a database service, not a website; connect to the primary at `127.0.0.1:3307` with a MySQL client. The replica is private to `app-network`. The primary, replica, and inventory MySQL data volumes persist independently. The automatic replication account and replica initialization run only for fresh data volumes. When migrating from the former `mysql` Compose service, its `mysql_data` volume is kept separate from the new `mysql_primary_data` volume. Back up the application database, stop the old container without removing its volume, restore the dump to the new primary, and only then start the fresh replica so it can replicate the restored schema and data. Do not delete existing volumes just to trigger initialization.
 
+The replica uses TLS for its connection to the primary (`SOURCE_SSL=1`) because MySQL 8.4's default `caching_sha2_password` authentication requires a secure connection. Certificate verification is disabled for this local Compose network (`SOURCE_SSL_VERIFY_SERVER_CERT=0`); use trusted certificates and enable verification outside local development. The replication initialization script runs only when a MySQL data directory is first initialized. To apply this change to an existing replica volume, run `STOP REPLICA; CHANGE REPLICATION SOURCE TO SOURCE_SSL = 1, SOURCE_SSL_VERIFY_SERVER_CERT = 0; START REPLICA;` once on the replica; this updates its persisted replication channel without deleting data.
+
 ### Useful Compose commands
 
 ```powershell

@@ -35,6 +35,8 @@ case "${MYSQL_REPLICATION_ROLE:?MYSQL_REPLICATION_ROLE is required}" in
                 SOURCE_PORT = 3306,
                 SOURCE_USER = '${replication_user}',
                 SOURCE_PASSWORD = '${replication_password}',
+                SOURCE_SSL = 1,
+                SOURCE_SSL_VERIFY_SERVER_CERT = 0,
                 SOURCE_AUTO_POSITION = 1;
             START REPLICA;
             SET PERSIST read_only = ON;
