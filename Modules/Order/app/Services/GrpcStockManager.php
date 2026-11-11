@@ -28,7 +28,15 @@ class GrpcStockManager implements StockManager
                     ];
                 }
 
-                $quantities[$productId] = ($quantities[$productId] ?? 0) + $quantity;
+                $currentQuantity = $quantities[$productId] ?? 0;
+                if ($quantity > 2_147_483_647 - $currentQuantity) {
+                    return [
+                        'success' => false,
+                        'message' => 'The combined product quantity exceeds the inventory service limit.',
+                    ];
+                }
+
+                $quantities[$productId] = $currentQuantity + $quantity;
             }
 
             if ($quantities === []) {
@@ -38,31 +46,29 @@ class GrpcStockManager implements StockManager
                 ];
             }
 
-            foreach ($quantities as $productId => $quantity) {
-                $result = $this->inventory->reserveProduct(
-                    $reservationId,
-                    (int) $productId,
-                    $quantity
-                );
-                if (!$result['success']) {
-                    return $this->failure(
-                        $reservationId,
-                        $result['message'] ?: "Unable to reserve product {$productId}."
-                    );
-                }
-            }
+            ksort($quantities);
+            $reservation = $this->inventory->reserveProducts(
+                $reservationId,
+                array_map(
+                    fn (int $productId, int $quantity) => [
+                        'product_id' => $productId,
+                        'quantity' => $quantity,
+                    ],
+                    array_keys($quantities),
+                    array_values($quantities)
+                )
+            );
 
-            return [
-                'success' => true,
-                'message' => 'Stock reserved successfully via gRPC.',
-                'reservation_id' => $reservationId,
-            ];
+            return $reservation + ['reservation_id' => $reservationId];
         } catch (Throwable $exception) {
             Log::error('Inventory gRPC reservation request failed.', [
                 'reservation_id' => $reservationId,
                 'exception' => $exception,
             ]);
-            return $this->failure($reservationId, 'Inventory gRPC error: ' . $exception->getMessage());
+            return $this->releaseAfterUncertainReservation(
+                $reservationId,
+                'Inventory gRPC error: ' . $exception->getMessage()
+            );
         }
     }
 
@@ -76,19 +82,19 @@ class GrpcStockManager implements StockManager
         return $this->inventory->releaseReservation($reservationId);
     }
 
-    private function failure(string $reservationId, string $message): array
+    private function releaseAfterUncertainReservation(string $reservationId, string $message): array
     {
         try {
             $release = $this->inventory->releaseReservation($reservationId);
             if (!$release['success']) {
-                Log::critical('Failed to release a partial inventory reservation.', [
+                Log::critical('Failed to release an inventory reservation after an uncertain gRPC result.', [
                     'reservation_id' => $reservationId,
                     'error' => $release['message'],
                 ]);
                 $message .= '; reservation release failed: ' . $release['message'];
             }
         } catch (Throwable $releaseException) {
-            Log::critical('Failed to release a partial inventory reservation.', [
+            Log::critical('Failed to release an inventory reservation after an uncertain gRPC result.', [
                 'reservation_id' => $reservationId,
                 'exception' => $releaseException,
             ]);

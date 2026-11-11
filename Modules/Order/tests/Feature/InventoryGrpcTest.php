@@ -12,9 +12,9 @@ class InventoryGrpcTest extends TestCase
     public function test_it_reserves_stock_successfully_when_grpc_server_accepts_request(): void
     {
         $gateway = \Mockery::mock(InventoryGateway::class);
-        $gateway->shouldReceive('reserveProduct')
+        $gateway->shouldReceive('reserveProducts')
             ->once()
-            ->with('reservation-success', 1, 2)
+            ->with('reservation-success', [['product_id' => 1, 'quantity' => 2]])
             ->andReturn(['success' => true, 'message' => 'Reserved']);
 
         $result = (new GrpcStockManager($gateway))->reserve(
@@ -29,12 +29,9 @@ class InventoryGrpcTest extends TestCase
     public function test_it_returns_failure_when_product_does_not_exist(): void
     {
         $gateway = \Mockery::mock(InventoryGateway::class);
-        $gateway->shouldReceive('reserveProduct')
+        $gateway->shouldReceive('reserveProducts')
             ->once()
             ->andReturn(['success' => false, 'message' => 'Product not found']);
-        $gateway->shouldReceive('releaseReservation')
-            ->once()
-            ->andReturn(['success' => true, 'message' => 'Released']);
 
         $result = (new GrpcStockManager($gateway))->reserve(
             'reservation-not-found',
@@ -48,12 +45,9 @@ class InventoryGrpcTest extends TestCase
     public function test_it_returns_failure_when_quantity_is_insufficient(): void
     {
         $gateway = \Mockery::mock(InventoryGateway::class);
-        $gateway->shouldReceive('reserveProduct')
+        $gateway->shouldReceive('reserveProducts')
             ->once()
             ->andReturn(['success' => false, 'message' => 'Insufficient stock']);
-        $gateway->shouldReceive('releaseReservation')
-            ->once()
-            ->andReturn(['success' => true, 'message' => 'Released']);
 
         $result = (new GrpcStockManager($gateway))->reserve(
             'reservation-insufficient',
@@ -64,24 +58,19 @@ class InventoryGrpcTest extends TestCase
         $this->assertSame('Insufficient stock', $result['message']);
     }
 
-    public function test_it_releases_partial_reservations_when_any_item_fails(): void
+    public function test_it_sends_all_items_in_one_atomic_reservation_request(): void
     {
         $gateway = \Mockery::mock(InventoryGateway::class);
-        $gateway->shouldReceive('reserveProduct')
-            ->ordered()
-            ->with('reservation-partial', 1, 2)
-            ->andReturn(['success' => true, 'message' => 'Reserved']);
-        $gateway->shouldReceive('reserveProduct')
-            ->ordered()
-            ->with('reservation-partial', 2, 9999)
-            ->andReturn(['success' => false, 'message' => 'Insufficient stock']);
-        $gateway->shouldReceive('releaseReservation')
+        $gateway->shouldReceive('reserveProducts')
             ->once()
-            ->with('reservation-partial')
-            ->andReturn(['success' => true, 'message' => 'Released']);
+            ->with('reservation-batch', [
+                ['product_id' => 1, 'quantity' => 2],
+                ['product_id' => 2, 'quantity' => 9999],
+            ])
+            ->andReturn(['success' => false, 'message' => 'Insufficient stock']);
 
         $result = (new GrpcStockManager($gateway))->reserve(
-            'reservation-partial',
+            'reservation-batch',
             [
                 ['product_id' => 1, 'quantity' => 2],
                 ['product_id' => 2, 'quantity' => 9999],
@@ -109,19 +98,16 @@ class InventoryGrpcTest extends TestCase
     public function test_it_returns_the_first_result_and_rejects_the_competing_reservation(): void
     {
         $gateway = \Mockery::mock(InventoryGateway::class);
-        $gateway->shouldReceive('reserveProduct')
+        $gateway->shouldReceive('reserveProducts')
             ->ordered()
             ->once()
-            ->with('reservation-race-1', 7, 1)
+            ->with('reservation-race-1', [['product_id' => 7, 'quantity' => 1]])
             ->andReturn(['success' => true, 'message' => 'Reserved']);
-        $gateway->shouldReceive('reserveProduct')
+        $gateway->shouldReceive('reserveProducts')
             ->ordered()
             ->once()
-            ->with('reservation-race-2', 7, 1)
+            ->with('reservation-race-2', [['product_id' => 7, 'quantity' => 1]])
             ->andReturn(['success' => false, 'message' => 'Insufficient stock']);
-        $gateway->shouldReceive('releaseReservation')
-            ->once()
-            ->andReturn(['success' => true, 'message' => 'Released']);
 
         $manager = new GrpcStockManager($gateway);
         $first = $manager->reserve('reservation-race-1', [['product_id' => 7, 'quantity' => 1]]);
@@ -135,7 +121,7 @@ class InventoryGrpcTest extends TestCase
     public function test_it_returns_an_error_when_the_grpc_call_exceeds_its_deadline(): void
     {
         $gateway = \Mockery::mock(InventoryGateway::class);
-        $gateway->shouldReceive('reserveProduct')
+        $gateway->shouldReceive('reserveProducts')
             ->once()
             ->andThrow(new RuntimeException('Inventory gRPC request failed (4): DEADLINE_EXCEEDED'));
         $gateway->shouldReceive('releaseReservation')
@@ -168,9 +154,9 @@ class InventoryGrpcTest extends TestCase
     public function test_it_aggregates_duplicate_product_lines_before_reserving(): void
     {
         $gateway = \Mockery::mock(InventoryGateway::class);
-        $gateway->shouldReceive('reserveProduct')
+        $gateway->shouldReceive('reserveProducts')
             ->once()
-            ->with('reservation-duplicates', 5, 5)
+            ->with('reservation-duplicates', [['product_id' => 5, 'quantity' => 5]])
             ->andReturn(['success' => true, 'message' => 'Reserved']);
 
         $result = (new GrpcStockManager($gateway))->reserve(
@@ -182,5 +168,26 @@ class InventoryGrpcTest extends TestCase
         );
 
         $this->assertTrue($result['success']);
+    }
+
+    public function test_it_does_not_call_inventory_for_invalid_or_empty_batches(): void
+    {
+        $gateway = \Mockery::mock(InventoryGateway::class);
+        $gateway->shouldNotReceive('reserveProducts');
+
+        $manager = new GrpcStockManager($gateway);
+
+        $this->assertFalse($manager->reserve('reservation-empty', [])['success']);
+        $this->assertFalse($manager->reserve(
+            'reservation-invalid',
+            [['product_id' => 1, 'quantity' => 0]]
+        )['success']);
+        $this->assertFalse($manager->reserve(
+            'reservation-too-large',
+            [
+                ['product_id' => 1, 'quantity' => 2_147_483_647],
+                ['product_id' => 1, 'quantity' => 1],
+            ]
+        )['success']);
     }
 }

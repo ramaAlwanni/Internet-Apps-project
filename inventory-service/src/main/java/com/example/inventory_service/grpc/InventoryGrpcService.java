@@ -81,6 +81,35 @@ public class InventoryGrpcService extends InventoryServiceGrpc.InventoryServiceI
     }
 
     @Override
+    public void reserveStockBatch(ReserveBatchRequest request, StreamObserver<ReserveResponse> responseObserver) {
+        try {
+            var items = request.getItemsList().stream()
+                    .map(item -> new InventoryBusinessService.StockReservationItem(
+                            item.getProductId(),
+                            item.getQuantity()
+                    ))
+                    .toList();
+
+            InventoryBusinessService.ReservationResult result =
+                    inventoryBusinessService.reserveStockBatch(request.getOrderRefId(), items);
+            respond(responseObserver, result.success(), result.message());
+        } catch (InventoryBusinessService.ProductNotFoundException exception) {
+            responseObserver.onError(Status.NOT_FOUND.withDescription(exception.getMessage()).asRuntimeException());
+        } catch (InventoryBusinessService.InsufficientStockException exception) {
+            respond(responseObserver, false, exception.getMessage());
+        } catch (IllegalArgumentException exception) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(exception.getMessage()).asRuntimeException());
+        } catch (Exception exception) {
+            LOGGER.error(
+                    "Unable to reserve inventory batch for reservation {}.",
+                    request.getOrderRefId(),
+                    exception
+            );
+            responseObserver.onError(Status.INTERNAL.withDescription("Unable to reserve inventory.").asRuntimeException());
+        }
+    }
+
+    @Override
     public void commitReservation(ReserveRequest request, StreamObserver<ReserveResponse> responseObserver) {
         try {
             InventoryBusinessService.ReservationResult result =

@@ -52,6 +52,41 @@ class InventoryGrpcIntegrationTest extends TestCase
         $this->assertSame(1, $inventory->getAvailableQuantity($productId));
     }
 
+    public function test_batch_reservation_is_atomic_when_one_product_has_insufficient_stock(): void
+    {
+        $inventory = new GrpcInventoryGateway();
+        $firstProductId = $this->newTestProductId();
+        $secondProductId = $this->newTestProductId();
+        $reservationId = (string) Str::uuid();
+        $inventory->ensureProductStock($firstProductId, 1);
+        $inventory->ensureProductStock($secondProductId, 1);
+
+        $failedReservation = $inventory->reserveProducts($reservationId, [
+            ['product_id' => $firstProductId, 'quantity' => 1],
+            ['product_id' => $secondProductId, 'quantity' => 2],
+        ]);
+
+        $this->assertFalse($failedReservation['success']);
+        $this->assertStringContainsString('Insufficient stock', $failedReservation['message']);
+        $this->assertSame(1, $inventory->getAvailableQuantity($firstProductId));
+        $this->assertSame(1, $inventory->getAvailableQuantity($secondProductId));
+
+        $successfulReservation = $inventory->reserveProducts($reservationId, [
+            ['product_id' => $firstProductId, 'quantity' => 1],
+            ['product_id' => $secondProductId, 'quantity' => 1],
+        ]);
+
+        $this->assertTrue($successfulReservation['success'], $successfulReservation['message']);
+        $this->assertSame(0, $inventory->getAvailableQuantity($firstProductId));
+        $this->assertSame(0, $inventory->getAvailableQuantity($secondProductId));
+
+        $release = $inventory->releaseReservation($reservationId);
+
+        $this->assertTrue($release['success'], $release['message']);
+        $this->assertSame(1, $inventory->getAvailableQuantity($firstProductId));
+        $this->assertSame(1, $inventory->getAvailableQuantity($secondProductId));
+    }
+
     public function test_only_one_live_grpc_reservation_wins_a_race_for_the_last_item(): void
     {
         $inventory = new GrpcInventoryGateway();

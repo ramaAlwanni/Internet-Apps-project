@@ -30,6 +30,7 @@
 - **Separate service databases:** Laravel owns catalog and order data in `mysql`; Java owns available stock and reservations in `inventory-db`.
 - **Requirement 2 walkthrough:** See [README-REQUIREMENT-2.md](README-REQUIREMENT-2.md) for the architecture, code flow, database ownership, and verification steps.
 - **Docker Compose environment:** Laravel MySQL, inventory MySQL, Java gRPC inventory, Laravel backend, and React frontend services.
+- **Product response caching:** Redis-backed product-list cache with automatic version-based invalidation, plus conditional HTTP responses using ETags.
 
 
 
@@ -110,6 +111,7 @@ Docker Compose builds and starts the MySQL primary and asynchronously replicated
 | `mysql-primary` | Laravel MySQL write primary | `127.0.0.1:3307` (MySQL client; not a browser URL) |
 | `mysql-replica` | Asynchronous Laravel MySQL read replica | Private to the Compose network |
 | `inventory-db` | Inventory database, private to the Compose network | No host port exposed |
+| `redis` | Laravel product cache | Private to the Compose network |
 
 The ports on the host are configurable with `FRONTEND_PORT`, `BACKEND_PORT`, `DB_FORWARD_PORT`, and `GRPC_FORWARD_PORT` in `.env`. Inside the Compose network, Laravel writes to `mysql-primary:3306` and reads from `mysql-replica:3306`; the inventory service uses the separate `inventory-db:3306` database, and Laravel calls gRPC at `inventory-service:9090`. Set a strong `DB_REPLICATION_PASSWORD` in `.env` before using this setup outside local development.
 
@@ -122,13 +124,53 @@ docker compose run --rm --no-deps backend php artisan key:generate
 docker compose up -d
 ```
 
-Compose waits for the primary and replica (including both replication threads), runs Laravel migrations against the primary, then starts the inventory service and backend. The Java service creates the independent inventory schema on startup. Check service status with:
+Compose waits for the primary and replica (including both replication threads), runs Laravel migrations against the primary, then starts the inventory service, Redis, and backend. The Java service creates the independent inventory schema on startup. The backend connects to Redis by the Compose service name `redis`; Redis is intentionally not exposed on a host port. Check service status with:
 
 ```powershell
 docker compose ps
 ```
 
-For migrations added later, run `docker compose run --rm migrate`. The backend image already installs Composer dependencies during the build; do not run `composer install` inside the container unless you intentionally change the dependency installation workflow.
+For migrations added later, run `docker compose run --rm migrate`. The backend image already installs Composer dependencies during the build, including Predis; do not run `composer install` inside the container unless you intentionally change the dependency installation workflow.
+
+### Verify Redis product caching and HTTP ETags
+
+The product-list route requires a signed-in user. Log in with an existing account to get a token, then call the same products URL twice:
+
+```powershell
+$login = Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8080/api/v1/users/sign-in `
+  -ContentType "application/json" `
+  -Body (@{ email = "your-email@example.com"; password = "your-password" } | ConvertTo-Json)
+$token = $login.data.token
+$authorization = "Bearer " + $token
+
+curl.exe -i `
+  -H "Authorization: $authorization" `
+  -H "Accept: application/json" `
+  "http://localhost:8080/api/v1/products?per_page=5"
+```
+
+The first request should return `200 OK` with an `ETag` header. Copy its quoted value and send it back on the next request:
+
+```powershell
+$etag = '"paste-the-exact-etag-value-here"'
+curl.exe -i `
+  -H "Authorization: $authorization" `
+  -H "Accept: application/json" `
+  -H "If-None-Match: $etag" `
+  "http://localhost:8080/api/v1/products?per_page=5"
+```
+
+An unchanged response should now be `304 Not Modified` with no response body. The second request also exercises the Redis cache. To show cache diagnostics, inspect Laravel's log after making the request:
+
+```powershell
+Get-Content .\storage\logs\laravel.log -Wait | Select-String "CACHE HIT|CACHE MISS"
+```
+
+The first uncached list request logs `CACHE MISS`; repeating the same query logs `CACHE HIT`. Query parameters such as category, page, and page size use distinct cache keys. Saving or deleting a product triggers the observer and advances the cache version, so the next list request misses the old key and caches fresh catalog data. The cache uses a one-hour TTL; changing the version makes old keys unreachable without needing to enumerate or delete them.
+
+For an interview walkthrough, explain the two layers separately: Redis avoids re-running the product/category database query for an identical list request, while ETag avoids retransmitting the identical HTTP representation to a client that already has it. The API still authenticates the request and computes the response before the ETag comparison; `304` saves response bandwidth, not all server-side work. Product stock is fetched from the inventory service on each request, so a stock change can change the response ETag even while the catalog list is cached.
 
 ### 3. Open or access an individual container
 
@@ -150,6 +192,8 @@ docker compose exec mysql-primary sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWOR
 ```
 
 Use the browser links in the table above to open the frontend or backend. MySQL is a database service, not a website; connect to the primary at `127.0.0.1:3307` with a MySQL client. The replica is private to `app-network`. The primary, replica, and inventory MySQL data volumes persist independently. The automatic replication account and replica initialization run only for fresh data volumes. When migrating from the former `mysql` Compose service, its `mysql_data` volume is kept separate from the new `mysql_primary_data` volume. Back up the application database, stop the old container without removing its volume, restore the dump to the new primary, and only then start the fresh replica so it can replicate the restored schema and data. Do not delete existing volumes just to trigger initialization.
+
+The replica uses TLS for its connection to the primary (`SOURCE_SSL=1`) because MySQL 8.4's default `caching_sha2_password` authentication requires a secure connection. Certificate verification is disabled for this local Compose network (`SOURCE_SSL_VERIFY_SERVER_CERT=0`); use trusted certificates and enable verification outside local development. The replication initialization script runs only when a MySQL data directory is first initialized. To apply this change to an existing replica volume, run `STOP REPLICA; CHANGE REPLICATION SOURCE TO SOURCE_SSL = 1, SOURCE_SSL_VERIFY_SERVER_CERT = 0; START REPLICA;` once on the replica; this updates its persisted replication channel without deleting data.
 
 ### Useful Compose commands
 
