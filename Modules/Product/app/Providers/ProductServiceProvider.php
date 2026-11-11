@@ -3,6 +3,8 @@
 namespace Modules\Product\Providers;
 
 use App\Contracts\Catalog\ProductCatalog;
+use Modules\Product\Observers\ProductObserver;
+use Modules\Product\Models\Product;
 use Modules\Product\Services\ProductCatalogService;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
@@ -50,6 +52,8 @@ class ProductServiceProvider extends ModuleServiceProvider
         parent::boot();
 
         $this->loadMigrationsFrom(module_path($this->name, 'Database/migrations'));
+
+        Product::observe(ProductObserver::class);
     }
 
     /**
