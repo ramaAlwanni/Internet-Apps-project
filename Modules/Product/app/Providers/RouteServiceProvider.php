@@ -2,6 +2,7 @@
 
 namespace Modules\Product\Providers;
 
+use Modules\Product\Http\Middleware\CheckETag;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Route;
 
@@ -17,6 +18,8 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        Route::aliasMiddleware('etag', CheckETag::class);  
     }
 
     /**

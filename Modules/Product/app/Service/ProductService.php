@@ -12,7 +12,8 @@ use Throwable;
 class ProductService
 {
     public function __construct(
-        private readonly ProductCatalog $productCatalog
+        private readonly ProductCatalog $productCatalog,
+        private readonly ProductCacheService $productCacheService 
     ) {
     }
 
@@ -47,41 +48,42 @@ class ProductService
 
     public function getAllProducts(array $filters = []): LengthAwarePaginator
     {
-        $perPage = $filters['per_page'] ?? 10;
+        //Get product with cache:
+        $products = $this->productCacheService->getCachedProducts($filters);
 
-        $products = Product::with('category')
-            ->when(
-                $filters['category_id'] ?? null,
-                fn ($query, $categoryId) => $query->where('category_id', $categoryId)
-            )
-            ->latest('id')
-            ->paginate($perPage)
-            ->withQueryString(); // حتى روابط الصفحة التالية تحتفظ بالفلتر
+        $productIds = $products->getCollection()->pluck('id')->all();
 
-        $snapshots = $this->productCatalog->findByIds(
-            $products->getCollection()->pluck('id')->all()
-        );
-        $products->getCollection()->each(function (Product $product) use ($snapshots): void {
-            if (isset($snapshots[(int) $product->id])) {
-                $product->setAttribute('stock', $snapshots[(int) $product->id]['stock']);
-            }
-        });
+        if (!empty($productIds)) {
+            $snapshots = $this->productCatalog->findByIds($productIds);
+
+            $products->getCollection()->each(function (Product $product) use ($snapshots): void {
+                if (isset($snapshots[(int) $product->id])) {
+                    $product->setAttribute('stock', $snapshots[(int) $product->id]['stock']);
+                }
+            });
+        }
+
+        //get product without cache:
+        // $perPage = $filters['per_page'] ?? 10;
+
+        // $products = Product::with('category')
+        //     ->when(
+        //         $filters['category_id'] ?? null,
+        //         fn ($query, $categoryId) => $query->where('category_id', $categoryId)
+        //     )
+        //     ->latest('id')
+        //     ->paginate($perPage)
+        //     ->withQueryString(); // حتى روابط الصفحة التالية تحتفظ بالفلتر
+
+        // $snapshots = $this->productCatalog->findByIds(
+        //     $products->getCollection()->pluck('id')->all()
+        // );
+        // $products->getCollection()->each(function (Product $product) use ($snapshots): void {
+        //     if (isset($snapshots[(int) $product->id])) {
+        //         $product->setAttribute('stock', $snapshots[(int) $product->id]['stock']);
+        //     }
+        // });
 
         return $products;
     }
 }
-
-// namespace Modules\Product\Service;
-
-// class ProductService
-// {
-//     public function addProduct(array $data)
-//     {
-//         //
-//     }
-
-//     public function getAllProducts()
-//     {
-//         //
-//     }
-// }
