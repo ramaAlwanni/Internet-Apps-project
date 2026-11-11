@@ -5,7 +5,7 @@ namespace Modules\Order\Contracts;
 interface StockManager
 {
     /**
-     * حجز كمية المنتجات.
+     * حجز كل كميات الطلب دفعة واحدة.
      */
     public function reserve(
         string $reservationId,
@@ -26,4 +26,3 @@ interface StockManager
         string $reservationId
     ): array;
 }
-

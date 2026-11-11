@@ -6,13 +6,13 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Modules\Product\Models\Product;
 
-class ProductCacheService 
+class ProductCacheService
 {
     protected const VERSION_KEY = 'products:cache:version';
-    protected const TTL = 3600; // ساعة واحدة
+    protected const TTL = 3600;
 
     /**
-     * الحصول على رقم الإصدار الحالي للكاش (يبدأ بـ 1 افتراضياً)
+     * Fetch the current cache version. If it doesn't exist, initialize it to 1. This versioning allows for efficient cache invalidation without needing to clear all cached entries manually.
      */
     protected function getVersion(): int
     {
@@ -20,7 +20,7 @@ class ProductCacheService
     }
 
     /**
-     * جلب المنتجات المفعلة مع الفلاتر والتنقل بين الصفحات باستخدام الإصدار
+     * Fetch the cached products with filters and pagination using the version.
      */
     public function getCachedProducts(array $filters = []): LengthAwarePaginator
     {
@@ -50,7 +50,7 @@ class ProductCacheService
     }
 
     /**
-     * إبطال الكاش هندسياً (Senior Way) عبر زيادة الإصدار فقط
+     * Invalidate the cache by incrementing the version number.
      */
     public function invalidateCache(): void
     {

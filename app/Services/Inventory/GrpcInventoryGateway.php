@@ -5,8 +5,10 @@ namespace App\Services\Inventory;
 use App\Contracts\Inventory\InventoryGateway;
 use Grpc\ChannelCredentials;
 use Inventory\InventoryServiceClient;
+use Inventory\ReserveBatchRequest;
 use Inventory\ReserveRequest;
 use Inventory\ReserveResponse;
+use Inventory\StockItem;
 use Inventory\StockRequest;
 use Inventory\StockResponse;
 use RuntimeException;
@@ -50,6 +52,27 @@ class GrpcInventoryGateway implements InventoryGateway
         return [
             'success' => $response->getSuccess(),
             'message' => $response->getMessage(),
+        ];
+    }
+
+    public function reserveProducts(string $reservationId, array $items): array
+    {
+        $request = new ReserveBatchRequest();
+        $request->setOrderRefId($reservationId);
+
+        foreach ($items as $item) {
+            $stockItem = new StockItem();
+            $stockItem->setProductId((int) $item['product_id']);
+            $stockItem->setQuantity((int) $item['quantity']);
+            $request->getItems()[] = $stockItem;
+        }
+
+        $response = $this->call('ReserveStockBatch', $request, ReserveResponse::class);
+
+        return [
+            'success' => $response->getSuccess(),
+            'message' => $response->getMessage(),
+            'reservation_id' => $reservationId,
         ];
     }
 

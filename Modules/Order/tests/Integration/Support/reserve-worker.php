@@ -6,18 +6,21 @@ require dirname(__DIR__, 5) . '/vendor/autoload.php';
 
 use Grpc\ChannelCredentials;
 use Inventory\InventoryServiceClient;
-use Inventory\ReserveRequest;
+use Inventory\ReserveBatchRequest;
+use Inventory\StockItem;
 
 [$script, $productId, $reservationId, $host] = $argv;
 
 $client = new InventoryServiceClient($host, [
     'credentials' => ChannelCredentials::createInsecure(),
 ]);
-$request = new ReserveRequest();
-$request->setProductId((int) $productId);
-$request->setQuantity(1);
+$request = new ReserveBatchRequest();
 $request->setOrderRefId($reservationId);
-[$response, $status] = $client->ReserveStock(
+$item = new StockItem();
+$item->setProductId((int) $productId);
+$item->setQuantity(1);
+$request->getItems()[] = $item;
+[$response, $status] = $client->ReserveStockBatch(
     $request,
     [],
     ['timeout' => 5_000_000]

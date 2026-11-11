@@ -63,6 +63,23 @@ class InventoryServiceClient extends BaseStub
     }
 
     /**
+     * @param \Inventory\ReserveBatchRequest $argument
+     * @param array $metadata
+     * @param array $options
+     * @return \Grpc\UnaryCall
+     */
+    public function ReserveStockBatch(\Inventory\ReserveBatchRequest $argument, $metadata = [], $options = [])
+    {
+        return $this->_simpleRequest(
+            '/inventory.InventoryService/ReserveStockBatch',
+            $argument,
+            ['\\Inventory\\ReserveResponse', 'decode'],
+            $metadata,
+            $options
+        );
+    }
+
+    /**
      * @param \Inventory\ReserveRequest $argument
      * @param array $metadata
      * @param array $options

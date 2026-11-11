@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Modules\Order\Database\Seeders\OrderDatabaseSeeder;
 use Modules\Product\Database\Seeders\ProductDatabaseSeeder;
 use Modules\User\Database\Seeders\UserDatabaseSeeder;
 use Modules\Product\Database\Seeders\ProductSeeder;
@@ -21,6 +22,7 @@ class DatabaseSeeder extends Seeder
             ProductDatabaseSeeder::class,
             RolePermissionSeeder::class,
             UserDatabaseSeeder::class,
+            OrderDatabaseSeeder::class,
         ]);
     }
 }

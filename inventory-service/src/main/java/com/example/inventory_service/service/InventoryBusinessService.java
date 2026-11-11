@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 @Service
 public class InventoryBusinessService {
@@ -111,6 +112,102 @@ public class InventoryBusinessService {
                 productId,
                 quantity
         );
+
+        return ReservationResult.succeeded();
+    }
+
+    @Transactional
+    public ReservationResult reserveStockBatch(
+            String reservationId,
+            List<StockReservationItem> requestedItems
+    ) {
+        validateReservationId(reservationId);
+        if (requestedItems == null || requestedItems.isEmpty()) {
+            throw new IllegalArgumentException("At least one product is required for a reservation.");
+        }
+
+        Map<Long, Integer> quantities = new TreeMap<>();
+        for (StockReservationItem item : requestedItems) {
+            validateProductId(item.productId());
+            if (item.quantity() <= 0) {
+                throw new IllegalArgumentException("Quantity must be greater than zero.");
+            }
+            try {
+                quantities.merge(item.productId(), item.quantity(), Math::addExact);
+            } catch (ArithmeticException exception) {
+                throw new IllegalArgumentException("Combined product quantity is too large.", exception);
+            }
+        }
+
+        jdbcTemplate.update(
+                "INSERT IGNORE INTO reservations (id, status) VALUES (?, 'RESERVED')",
+                reservationId
+        );
+        String reservationStatus = jdbcTemplate.queryForObject(
+                "SELECT status FROM reservations WHERE id = ? FOR UPDATE",
+                String.class,
+                reservationId
+        );
+
+        List<Map<String, Object>> existingItems = jdbcTemplate.queryForList(
+                "SELECT product_id, quantity, released FROM reservation_items "
+                        + "WHERE reservation_id = ? ORDER BY product_id FOR UPDATE",
+                reservationId
+        );
+        if (!existingItems.isEmpty()) {
+            Map<Long, Integer> existingQuantities = new TreeMap<>();
+            boolean allItemsActive = true;
+            for (Map<String, Object> existingItem : existingItems) {
+                long productId = ((Number) existingItem.get("product_id")).longValue();
+                int quantity = ((Number) existingItem.get("quantity")).intValue();
+                existingQuantities.put(productId, quantity);
+                allItemsActive &= !(Boolean) existingItem.get("released");
+            }
+
+            if (allItemsActive
+                    && existingQuantities.equals(quantities)
+                    && ("RESERVED".equals(reservationStatus) || "COMMITTED".equals(reservationStatus))) {
+                return ReservationResult.succeeded();
+            }
+            return ReservationResult.failure("Reservation does not match the previous request.");
+        }
+
+        if (!"RESERVED".equals(reservationStatus)) {
+            return ReservationResult.failure("Reservation is no longer active.");
+        }
+
+        for (Map.Entry<Long, Integer> item : quantities.entrySet()) {
+            int availableQuantity;
+            try {
+                availableQuantity = jdbcTemplate.queryForObject(
+                        "SELECT available_quantity FROM inventory_items WHERE product_id = ? FOR UPDATE",
+                        Integer.class,
+                        item.getKey()
+                );
+            } catch (EmptyResultDataAccessException exception) {
+                throw new ProductNotFoundException(item.getKey());
+            }
+
+            if (availableQuantity < item.getValue()) {
+                throw new InsufficientStockException(
+                        "Insufficient stock for product: " + item.getKey()
+                );
+            }
+        }
+
+        for (Map.Entry<Long, Integer> item : quantities.entrySet()) {
+            jdbcTemplate.update(
+                    "UPDATE inventory_items SET available_quantity = available_quantity - ? WHERE product_id = ?",
+                    item.getValue(),
+                    item.getKey()
+            );
+            jdbcTemplate.update(
+                    "INSERT INTO reservation_items (reservation_id, product_id, quantity) VALUES (?, ?, ?)",
+                    reservationId,
+                    item.getKey(),
+                    item.getValue()
+            );
+        }
 
         return ReservationResult.succeeded();
     }
@@ -258,6 +355,15 @@ public class InventoryBusinessService {
 
         static ReservationResult failure(String message) {
             return new ReservationResult(false, message);
+        }
+    }
+
+    public record StockReservationItem(long productId, int quantity) {
+    }
+
+    public static class InsufficientStockException extends RuntimeException {
+        public InsufficientStockException(String message) {
+            super(message);
         }
     }
 
