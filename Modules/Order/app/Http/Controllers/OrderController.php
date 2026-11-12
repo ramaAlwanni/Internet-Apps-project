@@ -21,11 +21,17 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
+        $pagination = $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Orders retrieved successfully',
             'data' => $this->orderService->getUserOrders(
-                $request->user()->id
+                $request->user()->id,
+                (int) ($pagination['per_page'] ?? 10)
             ),
         ]);
     }

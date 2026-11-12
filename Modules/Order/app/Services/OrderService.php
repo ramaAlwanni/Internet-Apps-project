@@ -143,27 +143,13 @@ class OrderService
         return $order;
     }
 
-    public function getUserOrders(int $userId)
+    public function getUserOrders(int $userId, int $perPage = 10)
     {
-        DB::flushQueryLog();
-        DB::enableQueryLog();
-
-        try {
-            $orders = Order::query()
-                ->with('items')
-                ->where('user_id', $userId)
-                ->latest()
-                ->get();
-
-            Log::info('User orders query count.', [
-                'user_id' => $userId,
-                'query_count' => count(DB::getQueryLog()),
-            ]);
-
-            return $orders;
-        } finally {
-            DB::disableQueryLog();
-        }
+        return Order::query()
+            ->with('items')
+            ->where('user_id', $userId)
+            ->latest()
+            ->paginate($perPage);
     }
 
     public function getAllOrders()

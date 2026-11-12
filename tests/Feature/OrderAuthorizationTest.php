@@ -45,6 +45,61 @@ class OrderAuthorizationTest extends TestCase
         $response->assertJsonMissing(['id' => $orderTwo->id]);
     }
 
+    public function test_user_orders_are_paginated_and_page_size_is_limited(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('user');
+        $category = Category::create(['name' => 'Pagination Category ' . uniqid()]);
+        $product = Product::create([
+            'name' => 'Pagination Product ' . uniqid(),
+            'description' => 'Pagination test product',
+            'price' => 10.00,
+            'photo' => 'tests/pagination-product.jpg',
+            'stock' => 20,
+            'category_id' => $category->id,
+        ]);
+
+        for ($index = 0; $index < 17; $index++) {
+            $order = Order::create([
+                'user_id' => $user->id,
+                'total_amount' => 10.00,
+                'status' => Order::STATUS_PENDING,
+            ]);
+            $order->items()->create([
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'unit_price' => $product->price,
+                'quantity' => 1,
+                'subtotal' => 10.00,
+            ]);
+        }
+
+        $token = $this->tokenFor($user);
+        $firstPage = $this->withToken($token)
+            ->getJson('/api/v1/orders?per_page=5&page=1')
+            ->assertOk()
+            ->assertJsonPath('data.current_page', 1)
+            ->assertJsonPath('data.per_page', 5)
+            ->assertJsonPath('data.last_page', 4)
+            ->assertJsonCount(5, 'data.data');
+
+        $secondPage = $this->withToken($token)
+            ->getJson('/api/v1/orders?per_page=5&page=2')
+            ->assertOk()
+            ->assertJsonPath('data.current_page', 2)
+            ->assertJsonCount(5, 'data.data');
+
+        $this->assertNotSame(
+            $firstPage->json('data.data.0.id'),
+            $secondPage->json('data.data.0.id')
+        );
+
+        $this->withToken($token)
+            ->getJson('/api/v1/orders?per_page=100')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('per_page');
+    }
+
     public function test_user_cannot_view_another_users_order_details(): void
     {
         $owner = User::factory()->create();

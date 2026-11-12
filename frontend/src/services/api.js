@@ -104,8 +104,10 @@ export const updateCartItemQuantityApi = async (productId, quantity) => {
     return response.data;
 };
 
-export const getMyOrdersApi = async () => {
-    const response = await API.get("/v1/orders");
+export const getMyOrdersApi = async (page = 1, perPage = 10) => {
+    const response = await API.get("/v1/orders", {
+        params: { page, per_page: perPage },
+    });
     return response.data;
 };
 
