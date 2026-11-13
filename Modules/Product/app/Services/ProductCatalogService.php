@@ -4,8 +4,11 @@ namespace Modules\Product\Services;
 
 use App\Contracts\Catalog\ProductCatalog;
 use App\Contracts\Inventory\InventoryGateway;
+use App\Exceptions\InventoryUnavailableException;
+use Illuminate\Support\Facades\Log;
 use Modules\Product\Models\Product;
 use RuntimeException;
+use Throwable;
 
 class ProductCatalogService implements ProductCatalog
 {
@@ -25,11 +28,29 @@ class ProductCatalogService implements ProductCatalog
 
     public function findByIds(array $productIds): array
     {
+        $products = Product::query()
+            ->whereIn('id', array_map('intval', $productIds))
+            ->get();
+
+        $snapshots = [];
+
+        // Read one product at a time and stop at the first inventory failure.
+        // Without this fail-fast loop a slow/dead warehouse service could cost
+        // one full timeout per product (and two RPC calls per product).
+        foreach ($products as $product) {
+            $snapshots[(int) $product->id] = $this->snapshotWithInventory($product);
+        }
+
+        return $snapshots;
+    }
+
+    public function findSnapshotsByIds(array $productIds): array
+    {
         return Product::query()
             ->whereIn('id', array_map('intval', $productIds))
             ->get()
             ->mapWithKeys(fn (Product $product) => [
-                (int) $product->id => $this->snapshotWithInventory($product),
+                (int) $product->id => $this->snapshot($product),
             ])
             ->all();
     }
@@ -140,8 +161,23 @@ class ProductCatalogService implements ProductCatalog
         }
 
         $productId = (int) $product->id;
-        $this->inventory->ensureProductStock($productId, (int) $product->stock);
-        $snapshot['stock'] = $this->inventory->getAvailableQuantity($productId);
+
+        try {
+            $this->inventory->ensureProductStock($productId, (int) $product->stock);
+            $snapshot['stock'] = $this->inventory->getAvailableQuantity($productId);
+        } catch (InventoryUnavailableException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            Log::error('Unable to read product stock from the inventory service.', [
+                'product_id' => $productId,
+                'exception' => $exception,
+            ]);
+
+            throw new InventoryUnavailableException(
+                InventoryUnavailableException::DEFAULT_MESSAGE,
+                $exception
+            );
+        }
 
         return $snapshot;
     }

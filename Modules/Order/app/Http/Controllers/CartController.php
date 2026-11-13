@@ -3,6 +3,7 @@
 namespace Modules\Order\Http\Controllers;
 
 use App\Contracts\Catalog\ProductCatalog;
+use App\Exceptions\BaseException;
 use App\Http\Controllers\Controller;
 use App\Rules\ProductExists;
 use Illuminate\Http\Request;
@@ -70,6 +71,12 @@ class CartController extends Controller
                 'message' => 'Product added to cart successfully',
                 'data' => $cart,
             ], 201);
+        } catch (BaseException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'data' => null,
+            ], $exception->getHttpCode());
         } catch (Throwable $exception) {
             return response()->json([
                 'success' => false,
@@ -108,6 +115,12 @@ class CartController extends Controller
                 'message' => 'Cart item updated successfully',
                 'data' => $cart,
             ]);
+        } catch (BaseException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'data' => null,
+            ], $exception->getHttpCode());
         } catch (Throwable $exception) {
             return response()->json([
                 'success' => false,
@@ -182,6 +195,12 @@ class CartController extends Controller
                 'message' => 'Order created from cart successfully',
                 'data' => $order,
             ], 201);
+        } catch (BaseException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'data' => null,
+            ], $exception->getHttpCode());
         } catch (Throwable $exception) {
             return response()->json([
                 'success' => false,

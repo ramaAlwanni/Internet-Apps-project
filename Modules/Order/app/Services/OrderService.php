@@ -4,10 +4,12 @@ namespace Modules\Order\Services;
 
 use App\Contracts\Catalog\ProductCatalog;
 use App\Contracts\Identity\UserDirectory;
+use App\Exceptions\InventoryUnavailableException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Order\Contracts\StockManager;
+use Modules\Order\Exceptions\InsufficientStockException;
 use Modules\Order\Models\Order;
 
 class OrderService
@@ -25,13 +27,45 @@ class OrderService
     ): Order {
         $reservationId = (string) Str::uuid();
 
-        $reservation = $this->stockManager->reserve(
-            $reservationId,
-            $items
-        );
+        try {
+            $reservation = $this->stockManager->reserve(
+                $reservationId,
+                $items
+            );
+        } catch (InsufficientStockException | InventoryUnavailableException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            if (str_contains(strtolower($exception->getMessage()), 'insufficient stock')) {
+                throw new InsufficientStockException(
+                    $this->insufficientStockMessage($exception->getMessage()),
+                    $exception
+                );
+            }
+
+            throw $exception;
+        }
 
         if (!$reservation['success']) {
-            throw new \RuntimeException($reservation['message']);
+            $message = (string) (
+                $reservation['message']
+                    ?? 'Stock reservation failed.'
+            );
+            $error = $reservation['error'] ?? null;
+
+            if ($error === 'inventory_unavailable') {
+                throw new InventoryUnavailableException($message);
+            }
+
+            if (
+                $error === 'insufficient_stock'
+                || str_contains(strtolower($message), 'insufficient stock')
+            ) {
+                throw new InsufficientStockException(
+                    $this->insufficientStockMessage($message)
+                );
+            }
+
+            throw new \RuntimeException($message);
         }
 
         try {
@@ -43,7 +77,10 @@ class OrderService
                     ->values()
                     ->all();
 
-                $products = $this->productCatalog->findByIds($productIds);
+                // Stock is already reserved at this point. Read catalog data
+                // locally so a warehouse failure cannot fail the order save
+                // (and force a reservation release) after a successful reserve.
+                $products = $this->productCatalog->findSnapshotsByIds($productIds);
 
                 if (count($products) !== count($productIds)) {
                     throw new \RuntimeException(
@@ -141,6 +178,22 @@ class OrderService
         }
 
         return $order;
+    }
+
+    private function insufficientStockMessage(string $warehouseMessage): string
+    {
+        $warehouseMessage = trim($warehouseMessage);
+
+        if ($warehouseMessage === '') {
+            return InsufficientStockException::DEFAULT_MESSAGE;
+        }
+
+        if (str_contains(strtolower($warehouseMessage), 'insufficient stock')) {
+            return $warehouseMessage
+                . ' Please reduce the quantity or choose another product.';
+        }
+
+        return $warehouseMessage;
     }
 
     public function getUserOrders(int $userId, int $perPage = 10)

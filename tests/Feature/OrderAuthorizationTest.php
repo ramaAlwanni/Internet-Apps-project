@@ -39,8 +39,8 @@ class OrderAuthorizationTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $orderOne->id);
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.id', $orderOne->id);
 
         $response->assertJsonMissing(['id' => $orderTwo->id]);
     }
@@ -97,7 +97,7 @@ class OrderAuthorizationTest extends TestCase
         $this->withToken($token)
             ->getJson('/api/v1/orders?per_page=100')
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('per_page');
+            ->assertJsonStructure(['data' => ['per_page']]);
     }
 
     public function test_user_cannot_view_another_users_order_details(): void
@@ -141,7 +141,7 @@ class OrderAuthorizationTest extends TestCase
             ->getJson('/api/v1/orders/admin')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(2, 'data');
+            ->assertJsonCount(2, 'data.data');
 
         $this->withToken($adminToken)
             ->getJson("/api/v1/orders/admin/{$orderOne->id}")
