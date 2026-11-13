@@ -46,8 +46,8 @@ class DefenseMasterTest extends TestCase
 
         $this->getJson('/api/v1/orders')
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $customerOrder->id);
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.id', $customerOrder->id);
     }
 
     public function test_only_one_rapid_competing_purchase_can_claim_the_last_item(): void
@@ -104,7 +104,7 @@ class DefenseMasterTest extends TestCase
         $customer = User::factory()->create();
         $product = $this->createProduct(stock: 1);
         $inventory = \Mockery::mock(InventoryGateway::class);
-        $inventory->shouldReceive('reserveProduct')
+        $inventory->shouldReceive('reserveProducts')
             ->once()
             ->andThrow(new RuntimeException(
                 'Inventory gRPC request failed (4): Deadline exceeded'
@@ -126,7 +126,7 @@ class DefenseMasterTest extends TestCase
                 ],
             ]);
 
-        $response->assertStatus(409)
+        $response->assertStatus(503)
             ->assertJsonPath('success', false);
         $this->assertStringContainsString(
             'Inventory gRPC request failed',

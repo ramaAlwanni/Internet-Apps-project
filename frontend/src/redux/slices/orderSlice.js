@@ -3,9 +3,9 @@ import { getMyOrdersApi } from "../../services/api";
 
 export const fetchMyOrders = createAsyncThunk(
     "order/fetchMyOrders",
-    async (_, thunkAPI) => {
+    async (page = 1, thunkAPI) => {
         try {
-            const data = await getMyOrdersApi();
+            const data = await getMyOrdersApi(page);
             return data; 
         } catch (error) {
             const message =
@@ -21,6 +21,9 @@ const orderSlice = createSlice({
     name: "order",
     initialState: {
         orders: [],
+        currentPage: 1,
+        lastPage: 1,
+        total: 0,
         isLoading: false,
         isError: false,
         message: "",
@@ -34,7 +37,13 @@ const orderSlice = createSlice({
             })
             .addCase(fetchMyOrders.fulfilled, (state, action) => {
                 state.isLoading = false;
-                state.orders = action.payload.data || [];
+                const pagination = action.payload.data;
+                state.orders = Array.isArray(pagination)
+                    ? pagination
+                    : pagination?.data || [];
+                state.currentPage = pagination?.current_page || 1;
+                state.lastPage = pagination?.last_page || 1;
+                state.total = pagination?.total || state.orders.length;
             })
             .addCase(fetchMyOrders.rejected, (state, action) => {
                 state.isLoading = false;

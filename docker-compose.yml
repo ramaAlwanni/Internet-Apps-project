@@ -178,6 +178,7 @@ services:
       REDIS_PORT: "6379"
       ORDER_STOCK_MANAGER: grpc
       GRPC_INVENTORY_HOST: inventory-service:9090
+      GRPC_INVENTORY_TIMEOUT: "${GRPC_INVENTORY_TIMEOUT:-5}"
     volumes:
       - .:/var/www/html
       - ./.env:/var/www/html/.env

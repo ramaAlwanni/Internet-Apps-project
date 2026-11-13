@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchMyOrders } from "../../../redux/slices/orderSlice";
 import { ChevronRight } from "lucide-react";
@@ -6,11 +6,13 @@ import { ChevronRight } from "lucide-react";
 
 const OrdersList = ({ onSelectOrder }) => {
     const dispatch = useDispatch();
-    const { orders, isLoading } = useSelector((state) => state.order);
+    const [requestedPage, setRequestedPage] = useState(1);
+    const { orders, currentPage, lastPage, total, isLoading, isError, message } =
+        useSelector((state) => state.order);
 
     useEffect(() => {
-        dispatch(fetchMyOrders());
-    }, [dispatch]);
+        dispatch(fetchMyOrders(requestedPage));
+    }, [dispatch, requestedPage]);
 
 
     const getStatusStyle = (status) => {
@@ -30,6 +32,10 @@ const OrdersList = ({ onSelectOrder }) => {
 
     if (isLoading) {
         return <div className="text-center py-12 text-[#5c212c] font-semibold">Loading orders...</div>;
+    }
+
+    if (isError) {
+        return <div role="alert" className="text-center py-12 text-red-700 font-semibold">{message}</div>;
     }
 
     if (!orders || orders.length === 0) {
@@ -99,6 +105,29 @@ const OrdersList = ({ onSelectOrder }) => {
                     </div>
                 );
             })}
+            {lastPage > 1 && (
+                <div className="flex items-center justify-center gap-4 pt-4">
+                    <button
+                        type="button"
+                        onClick={() => setRequestedPage(currentPage - 1)}
+                        disabled={currentPage <= 1 || isLoading}
+                        className="px-4 py-2 rounded-full bg-white/70 border border-[#823945]/20 text-[#5c212c] text-sm font-semibold disabled:opacity-40 shadow-sm hover:bg-white transition-all cursor-pointer"
+                    >
+                        Previous
+                    </button>
+                    <span className="text-sm font-bold text-[#5c212c]">
+                        Page {currentPage} of {lastPage} ({total} orders)
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setRequestedPage(currentPage + 1)}
+                        disabled={currentPage >= lastPage || isLoading}
+                        className="px-4 py-2 rounded-full bg-white/70 border border-[#823945]/20 text-[#5c212c] text-sm font-semibold disabled:opacity-40 shadow-sm hover:bg-white transition-all cursor-pointer"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
