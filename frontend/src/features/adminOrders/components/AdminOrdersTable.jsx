@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAdminOrders } from "../../../redux/slices/adminOrderSlice";
+import { useAdminOrdersRealtime } from "../hooks/useAdminOrdersRealtime";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import AdminOrderDetailsModal from "./AdminOrderDetailsModal";
 
 const AdminOrdersTable = () => {
     const dispatch = useDispatch();
+    useAdminOrdersRealtime();
     const { orders, loading, error } = useSelector(
         (state) => state.adminOrders,
     );

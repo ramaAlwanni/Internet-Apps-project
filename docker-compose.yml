@@ -196,6 +196,35 @@ services:
     networks:
       - app-network
 
+  reverb:
+    image: internet-apps-backend:local
+    container_name: laravel_reverb
+    command: php artisan reverb:start --host=0.0.0.0 --port=6001
+    ports:
+      - "${REVERB_PORT:-6001}:6001"
+    environment:
+      APP_ENV: "${APP_ENV:-local}"
+      APP_DEBUG: "${APP_DEBUG:-true}"
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: "${REVERB_APP_ID:-100100}"
+      REVERB_APP_KEY: "${REVERB_APP_KEY:-local-reverb-key}"
+      REVERB_APP_SECRET: "${REVERB_APP_SECRET:-local-reverb-secret}"
+      REVERB_HOST: "0.0.0.0"
+      REVERB_PORT: "6001"
+      REVERB_SCHEME: "http"
+      CACHE_STORE: redis
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    volumes:
+      - .:/var/www/html
+      - ./.env:/var/www/html/.env
+    depends_on:
+      - backend
+      - redis
+    networks:
+      - app-network
+
   frontend:
     build:
       context: ./frontend

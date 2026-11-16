@@ -13,15 +13,13 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('/', [ProductController::class, 'index'])->middleware(['etag']);
     // Route::get('/', [ProductController::class, 'index']);
-    Route::delete('/{id}', [ProductController::class, 'destroy']);
-
 
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('categories/{category}', [CategoryController::class, 'show']);
 
-    
-    Route::middleware('role:admin')->group(function () {
+    Route::middleware('role:admin,api')->group(function () {
         Route::post('/', [ProductController::class, 'store']);
+        Route::delete('/{id}', [ProductController::class, 'destroy']);
 
         Route::post('categories', [CategoryController::class, 'store']);
         Route::put('categories/{category}', [CategoryController::class, 'update']);

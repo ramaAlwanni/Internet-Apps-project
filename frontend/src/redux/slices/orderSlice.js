@@ -27,8 +27,24 @@ const orderSlice = createSlice({
         isLoading: false,
         isError: false,
         message: "",
+        statusById: {},
     },
-    reducers: {},
+    reducers: {
+        orderStatusUpdated: (state, action) => {
+            const { orderId, status } = action.payload ?? {};
+            if (!orderId || !status) return;
+
+            state.statusById[String(orderId)] = status;
+
+            const order = state.orders.find(
+                (existing) => Number(existing.id) === Number(orderId),
+            );
+
+            if (order) {
+                order.status = status;
+            }
+        },
+    },
     extraReducers: (builder) => {
         builder
             .addCase(fetchMyOrders.pending, (state) => {
@@ -53,4 +69,5 @@ const orderSlice = createSlice({
     },
 });
 
+export const { orderStatusUpdated } = orderSlice.actions;
 export default orderSlice.reducer;

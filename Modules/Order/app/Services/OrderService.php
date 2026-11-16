@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 use Modules\Order\Contracts\StockManager;
 use Modules\Order\Exceptions\InsufficientStockException;
 use Modules\Order\Models\Order;
+use Modules\Order\Events\OrderCreatedEvent;
+use Modules\Order\Events\OrderStatusUpdatedEvent;
 
 class OrderService
 {
@@ -177,6 +179,10 @@ class OrderService
             );
         }
 
+        // Broadcast only once the order and its stock reservation are safely
+        // committed, so the admin table never shows an order that was rolled back.
+        event(new OrderCreatedEvent($order));
+
         return $order;
     }
 
@@ -246,7 +252,7 @@ class OrderService
         int $orderId,
         string $newStatus
     ): Order {
-        return DB::transaction(function () use ($orderId, $newStatus) {
+        $order = DB::transaction(function () use ($orderId, $newStatus) {
             $order = Order::query()
                 ->lockForUpdate()
                 ->findOrFail($orderId);
@@ -282,5 +288,11 @@ class OrderService
 
             return $order->load('items');
         });
+
+        // Broadcast only after the transaction commits, so clients never
+        // receive a status change that was later rolled back.
+        event(new OrderStatusUpdatedEvent($order));
+
+        return $order;
     }
 }
