@@ -73,6 +73,70 @@ return [
             'after_commit' => false,
         ],
 
+        'rabbitmq' => [
+            'driver' => 'rabbitmq',
+            'queue' => env('RABBITMQ_QUEUE', 'order_emails_queue'),
+            'connection' => PhpAmqpLib\Connection\AMQPLazyConnection::class,
+
+            'hosts' => [
+                [
+                    'host' => env('RABBITMQ_HOST', '127.0.0.1'),
+                    'port' => env('RABBITMQ_PORT', 5672),
+                    'user' => env('RABBITMQ_USER', 'guest'),
+                    'password' => env('RABBITMQ_PASSWORD', 'guest'),
+                    'vhost' => env('RABBITMQ_VHOST', '/'),
+                ],
+            ],
+
+            'options' => [
+                'ssl_options' => [
+                    'cafile' => env('RABBITMQ_SSL_CAFILE', null),
+                    'local_cert' => env('RABBITMQ_SSL_LOCALCERT', null),
+                    'local_key' => env('RABBITMQ_SSL_LOCALKEY', null),
+                    'verify_peer' => env('RABBITMQ_SSL_VERIFY_PEER', true),
+                    'passphrase' => env('RABBITMQ_SSL_PASSPHRASE', null),
+                ],
+                'queue' => [
+                    'order_emails_queue' => [
+                        'declare' => true,
+                        'bind' => true,
+                        'passive' => false,
+                        'durable' => true,
+                        'exclusive' => false,
+                        'auto_delete' => false,
+                        'arguments' => json_encode([
+                            'x-dead-letter-exchange' => 'orders_dlx',
+                            'x-dead-letter-routing-key' => 'order_emails_dlq',
+                        ]),
+                    ],
+
+                    'order_emails_dlq' => [
+                        'declare' => true,
+                        'bind' => true,
+                        'passive' => false,
+                        'durable' => true,
+                        'exclusive' => false,
+                        'auto_delete' => false,
+                        'arguments' => json_encode([
+                            'x-dead-letter-exchange' => 'parking_lot_exchange',
+                            'x-dead-letter-routing-key' => 'parking.key',
+                        ]),
+                    ],
+
+                    'order_emails_parking_lot' => [
+                        'declare' => true,
+                        'bind' => true,
+                        'passive' => false,
+                        'durable' => true,
+                        'exclusive' => false,
+                        'auto_delete' => false,
+                    ],
+                ],
+            ],
+
+            'worker' => env('RABBITMQ_WORKER', 'default'),
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

@@ -15,7 +15,8 @@
         "nwidart/laravel-modules": "^12.0",
         "predis/predis": "^3.7",
         "spatie/laravel-permission": "^6.25",
-        "tymon/jwt-auth": "^2.3"
+        "tymon/jwt-auth": "^2.3",
+        "vladimir-yuldashev/laravel-queue-rabbitmq": "^15.0"
     },
     "require-dev": {
         "dedoc/scramble": "*",
