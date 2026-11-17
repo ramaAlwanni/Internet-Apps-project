@@ -27,6 +27,9 @@ class OrderStatusUpdatedEvent implements ShouldBroadcastNow
         return [
             new PrivateChannel('admin.orders'),
             new PrivateChannel('order.'.$this->order->id),
+            // Lets the customer receive the update on any page, not only while
+            // the details modal for this order is open.
+            new PrivateChannel('user.'.$this->order->user_id),
         ];
     }
 

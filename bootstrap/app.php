@@ -27,6 +27,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
+        /**
+         * This is an API-only application (the SPA handles login itself and no
+         * `login` named route exists). Laravel's default guest redirect calls
+         * route('login'), which throws RouteNotFoundException and turns every
+         * unauthenticated request into a 500 before the AuthenticationException
+         * renderer below can return a proper 401.
+         */
+        $middleware->redirectGuestsTo(fn () => null);
+
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,

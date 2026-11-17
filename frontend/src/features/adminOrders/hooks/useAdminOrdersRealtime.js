@@ -1,5 +1,4 @@
 import { useDispatch } from "react-redux";
-import toast from "react-hot-toast";
 
 import { useEchoPrivateChannel } from "../../../hooks/useEchoPrivateChannel";
 import {
@@ -12,6 +11,9 @@ import {
  *
  * Subscribes to `private-admin.orders` because `echo.private("admin.orders")`
  * adds the "private-" prefix automatically.
+ *
+ * Notifications/toasts are owned by `useAdminOrderNotifications` (mounted in
+ * AdminHeader), so this hook only updates the table data.
  */
 export function useAdminOrdersRealtime() {
   const dispatch = useDispatch();
@@ -22,7 +24,6 @@ export function useAdminOrdersRealtime() {
       if (!order?.id) return;
 
       dispatch(orderCreated(order));
-      toast.success(`New order #ORD-${order.id} received`);
     },
 
     ".order.status.updated": (payload) => {

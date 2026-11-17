@@ -183,6 +183,7 @@ services:
       - .:/var/www/html
       - ./.env:/var/www/html/.env
       - ./docker/nginx.conf:/etc/nginx/sites-available/default:ro
+      - ./docker/php/zz-perf.ini:/usr/local/etc/php/conf.d/zz-perf.ini:ro
       - product_images:/var/www/html/storage/app/public/products
     depends_on:
       migrate:

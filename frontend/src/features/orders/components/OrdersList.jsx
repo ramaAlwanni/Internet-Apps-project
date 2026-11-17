@@ -1,14 +1,25 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchMyOrders } from "../../../redux/slices/orderSlice";
+import { useOrderHighlight } from "../../../hooks/useOrderHighlight";
 import { ChevronRight } from "lucide-react";
 
 
 const OrdersList = ({ onSelectOrder }) => {
     const dispatch = useDispatch();
     const [requestedPage, setRequestedPage] = useState(1);
-    const { orders, currentPage, lastPage, total, isLoading, isError, message } =
-        useSelector((state) => state.order);
+    const {
+        orders,
+        currentPage,
+        lastPage,
+        total,
+        isLoading,
+        isError,
+        message,
+        statusById,
+    } = useSelector((state) => state.order);
+
+    const { isHighlighted } = useOrderHighlight(orders);
 
     useEffect(() => {
         dispatch(fetchMyOrders(requestedPage));
@@ -49,12 +60,19 @@ const OrdersList = ({ onSelectOrder }) => {
                 const formattedDate = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
                 const formattedTime = dateObj.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
                 const itemsCount = order.items?.length || 0;
+                const status = statusById?.[String(order.id)] ?? order.status;
 
                 return (
                     <div
                         key={order.id}
-                        onClick={() => onSelectOrder(order)}
-                        className="w-full bg-white/30 backdrop-blur-sm border border-white/40 hover:bg-white/40 rounded-[24px] p-4 transition-all cursor-pointer shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4"
+                        id={`order-${order.id}`}
+                        data-order-id={order.id}
+                        onClick={() => onSelectOrder({ ...order, status })}
+                        className={`w-full bg-white/30 backdrop-blur-sm border border-white/40 hover:bg-white/40 rounded-[24px] p-4 transition-all cursor-pointer shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 ${
+                            isHighlighted(order.id)
+                                ? "ring-2 ring-[#823945] bg-white/70 shadow-lg animate-pulse"
+                                : ""
+                        }`}
                     >
                         <div className="min-w-[120px]">
                             <h4 className="text-sm font-extrabold text-[#5c212c]">
@@ -94,8 +112,8 @@ const OrdersList = ({ onSelectOrder }) => {
                                 </p>
                             </div>
 
-                            <span className={`px-3 py-1 rounded-full text-[11px] font-bold capitalize ${getStatusStyle(order.status)}`}>
-                                • {order.status}
+                            <span className={`px-3 py-1 rounded-full text-[11px] font-bold capitalize ${getStatusStyle(status)}`}>
+                                • {status}
                             </span>
 
                             <div className="w-8 h-8 rounded-full bg-white/50 hover:bg-white flex items-center justify-center text-[#823945] shadow-xs">

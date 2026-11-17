@@ -26,6 +26,9 @@ const AdminOrderDetailsModal = ({
 
     if (!isOpen || !order) return null;
 
+    // Delivered/cancelled orders are final on the backend as well.
+    const isFinalStatus = ["delivered", "cancelled"].includes(order.status);
+
    
     const orderDate = new Date(order.created_at);
 
@@ -242,7 +245,7 @@ const AdminOrderDetailsModal = ({
                                     onChange={(e) =>
                                         setSelectedStatus(e.target.value)
                                     }
-                                    disabled={loading}
+                                    disabled={loading || isFinalStatus}
                                     className="appearance-none bg-white/70 border border-[#823945]/20 rounded-full py-2.5 pl-4 pr-10 text-xs font-bold text-[#5c212c] focus:outline-none focus:border-[#823945] cursor-pointer shadow-xs capitalize disabled:opacity-50"
                                 >
                                     <option value="pending">Pending</option>
@@ -262,8 +265,12 @@ const AdminOrderDetailsModal = ({
                         <button
                             type="button"
                             onClick={handleUpdateStatus}
-                            disabled={loading}
-                            className="mt-4 sm:mt-4 py-2.5 px-5 rounded-full bg-[#823945] hover:bg-[#6e2f3a] text-white text-xs font-bold shadow-md active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                            disabled={
+                                loading ||
+                                isFinalStatus ||
+                                selectedStatus === order.status
+                            }
+                            className="mt-4 sm:mt-4 py-2.5 px-5 rounded-full bg-[#823945] hover:bg-[#6e2f3a] text-white text-xs font-bold shadow-md active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <RefreshCw
                                 className={`w-3.5 h-3.5 ${
@@ -271,9 +278,20 @@ const AdminOrderDetailsModal = ({
                                 }`}
                             />
                             <span>
-                                {loading ? "Updating..." : "Update Status"}
+                                {loading
+                                    ? "Updating..."
+                                    : isFinalStatus
+                                      ? "Final status"
+                                      : "Update Status"}
                             </span>
                         </button>
+
+                        {isFinalStatus && (
+                            <p className="text-[10px] font-semibold text-[#732f3a]/70 text-right mt-1">
+                                Delivered and cancelled orders can no longer be
+                                changed.
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>

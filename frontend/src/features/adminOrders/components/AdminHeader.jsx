@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-// import { Bell } from 'lucide-react';
 import NotificationsDropdown from "../../notifications/components/NotificationsDropdown";
+import NotificationBell from "../../notifications/components/NotificationBell";
+import { useAdminOrderNotifications } from "../../notifications/hooks/useAdminOrderNotifications";
 
 const AdminHeader = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+    // Mounted on every admin page, so new orders notify the admin even while
+    // they are managing products instead of watching the orders table.
+    useAdminOrderNotifications(true);
 
     const isAdminOrders = location.pathname === "/admin/orders";
 
@@ -44,16 +49,12 @@ const AdminHeader = () => {
 
             <div className="flex items-center gap-4">
                 <div className="relative">
-                    {/* <button
-            type="button"
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className="relative w-9 h-9 rounded-full bg-white/50 hover:bg-white text-[#5c212c] flex items-center justify-center transition-all cursor-pointer shadow-xs border border-white/40"
-          >
-            <Bell className="w-4 h-4 text-[#823945]" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-extrabold flex items-center justify-center shadow-xs">
-              3
-            </span>
-          </button> */}
+                    <NotificationBell
+                        isOpen={isNotificationsOpen}
+                        onClick={() =>
+                            setIsNotificationsOpen(!isNotificationsOpen)
+                        }
+                    />
 
                     <NotificationsDropdown
                         isOpen={isNotificationsOpen}

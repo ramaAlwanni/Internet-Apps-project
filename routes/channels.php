@@ -17,10 +17,17 @@ use Modules\User\Models\User;
 // Echo subscribes with echo.private('admin.orders') -> "private-admin.orders".
 // Laravel strips the "private-" prefix before matching, so register the bare name.
 Broadcast::channel('admin.orders', function (User $user) {
-    return $user->hasRole('admin') || $user->is_admin === true;
+    return $user->hasRole('admin');
 });
 
 //====================== User channel =========================
+// Personal channel so a customer is notified about their order status on
+// every page (home, cart, orders), not only while a modal is open.
+Broadcast::channel('user.{userId}', function (User $user, $userId) {
+    return (int) $user->getKey() === (int) $userId;
+});
+
+//====================== Single order channel =========================
 // The User model has no `orders()` relation, so query the Order model
 // directly and make sure the order belongs to the authenticated user.
 Broadcast::channel('order.{orderId}', function (User $user, $orderId) {

@@ -252,46 +252,51 @@ class OrderService
         int $orderId,
         string $newStatus
     ): Order {
-        $order = DB::transaction(function () use ($orderId, $newStatus) {
+        $changed = false;
+
+        $order = DB::transaction(function () use ($orderId, $newStatus, &$changed) {
             $order = Order::query()
                 ->lockForUpdate()
                 ->findOrFail($orderId);
 
-            $allowedTransitions = [
-                Order::STATUS_PENDING => [
-                    Order::STATUS_CONFIRMED,
-                    Order::STATUS_CANCELLED,
-                ],
-                Order::STATUS_CONFIRMED => [
-                    Order::STATUS_PROCESSING,
-                    Order::STATUS_CANCELLED,
-                ],
-                Order::STATUS_PROCESSING => [
-                    Order::STATUS_SHIPPED,
-                ],
-                Order::STATUS_SHIPPED => [
-                    Order::STATUS_DELIVERED,
-                ],
-                Order::STATUS_DELIVERED => [],
-                Order::STATUS_CANCELLED => [],
+            if (!in_array($newStatus, Order::statuses(), true)) {
+                throw new \RuntimeException(
+                    "Unknown order status: {$newStatus}."
+                );
+            }
+
+            // Delivered and cancelled orders are final: they can no longer be
+            // edited, otherwise a completed sale could silently be reopened.
+            $finalStatuses = [
+                Order::STATUS_DELIVERED,
+                Order::STATUS_CANCELLED,
             ];
 
-            $allowedStatuses = $allowedTransitions[$order->status] ?? [];
-
-            if (!in_array($newStatus, $allowedStatuses, true)) {
+            if (
+                in_array($order->status, $finalStatuses, true)
+                && $newStatus !== $order->status
+            ) {
                 throw new \RuntimeException(
                     "Cannot change order status from {$order->status} to {$newStatus}."
                 );
             }
 
+            // Selecting the current status is a valid no-op (no notification).
+            if ($newStatus === $order->status) {
+                return $order->load('items');
+            }
+
             $order->update(['status' => $newStatus]);
+            $changed = true;
 
             return $order->load('items');
         });
 
         // Broadcast only after the transaction commits, so clients never
         // receive a status change that was later rolled back.
-        event(new OrderStatusUpdatedEvent($order));
+        if ($changed) {
+            event(new OrderStatusUpdatedEvent($order));
+        }
 
         return $order;
     }
