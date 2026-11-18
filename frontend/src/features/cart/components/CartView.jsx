@@ -11,7 +11,7 @@ import toast from "react-hot-toast";
 
 const CartView = () => {
     const dispatch = useDispatch();
-    const { cartItems, latestOrder, isLoading } = useSelector(
+    const { cartItems, latestOrder, isLoading, isError, message } = useSelector(
         (state) => state.cart,
     );
 
@@ -109,9 +109,11 @@ const CartView = () => {
 
                 {cartItems.length === 0 ? (
                     <div className="text-center py-10 text-[#5c212c] font-medium text-xs">
-                        {latestOrder
-                            ? "Order created successfully! 🎉"
-                            : "Your cart is empty."}
+                        {isError
+                            ? message
+                            : latestOrder
+                              ? "Order created successfully! 🎉"
+                              : "Your cart is empty."}
                     </div>
                 ) : (
                     cartItems.map((item) => (

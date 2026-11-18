@@ -1,4 +1,5 @@
 import axios from "axios";
+import { endSession, getStoredUser } from "./authSession";
 
 const API = axios.create({
     baseURL: "http://localhost:8080/api",
@@ -18,6 +19,26 @@ API.interceptors.request.use(
         return config;
     },
     (error) => {
+        return Promise.reject(error);
+    },
+);
+
+API.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        const status = error.response?.status;
+
+        if (status === 401) {
+            // Missing, expired, or blacklisted token.
+            endSession("expired");
+        } else if (status === 403 && getStoredUser()?.role === "admin") {
+            // An admin bypasses authorization server-side, so a 403 for an
+            // admin means the stored token no longer matches the server
+            // (stale login or permission cache). Force a clean re-login
+            // instead of showing a raw permission error.
+            endSession("forbidden");
+        }
+
         return Promise.reject(error);
     },
 );
@@ -104,8 +125,10 @@ export const updateCartItemQuantityApi = async (productId, quantity) => {
     return response.data;
 };
 
-export const getMyOrdersApi = async () => {
-    const response = await API.get("/v1/orders");
+export const getMyOrdersApi = async (page = 1, perPage = 10) => {
+    const response = await API.get("/v1/orders", {
+        params: { page, per_page: perPage },
+    });
     return response.data;
 };
 

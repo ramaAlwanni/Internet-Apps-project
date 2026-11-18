@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAdminOrders } from "../../../redux/slices/adminOrderSlice";
+import { useAdminOrdersRealtime } from "../hooks/useAdminOrdersRealtime";
+import { useOrderHighlight } from "../../../hooks/useOrderHighlight";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import AdminOrderDetailsModal from "./AdminOrderDetailsModal";
 
 const AdminOrdersTable = () => {
     const dispatch = useDispatch();
+    useAdminOrdersRealtime();
     const { orders, loading, error } = useSelector(
         (state) => state.adminOrders,
     );
+
+    const { isHighlighted } = useOrderHighlight(orders);
 
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -101,7 +106,13 @@ const AdminOrdersTable = () => {
                                     return (
                                         <tr
                                             key={order.id}
-                                            className="hover:bg-white/20 transition-colors"
+                                            id={`admin-order-${order.id}`}
+                                            data-order-id={order.id}
+                                            className={`transition-colors ${
+                                                isHighlighted(order.id)
+                                                    ? "bg-[#823945]/15 outline outline-2 -outline-offset-2 outline-[#823945]"
+                                                    : "hover:bg-white/20"
+                                            }`}
                                         >
                                             <td className="py-4 px-4 font-extrabold">
                                                 #ORD-{order.id}

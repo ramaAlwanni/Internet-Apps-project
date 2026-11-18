@@ -8,6 +8,14 @@ interface ProductCatalog
 
     public function findByIds(array $productIds): array;
 
+    /**
+     * Read catalog snapshots without contacting the inventory service.
+     *
+     * This is used after stock has already been reserved, so saving the order
+     * does not depend on a second availability call to the warehouse.
+     */
+    public function findSnapshotsByIds(array $productIds): array;
+
     public function ensureInventoryStock(int $productId, int $initialQuantity): void;
 
     /**

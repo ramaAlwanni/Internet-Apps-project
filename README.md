@@ -29,6 +29,7 @@
 - **gRPC inventory service:** Laravel and Java communicate over gRPC; inventory quantities and persistent reservations are stored in a database dedicated to the Java service.
 - **Separate service databases:** Laravel owns catalog and order data in `mysql`; Java owns available stock and reservations in `inventory-db`.
 - **Requirement 2 walkthrough:** See [README-REQUIREMENT-2.md](README-REQUIREMENT-2.md) for the architecture, code flow, database ownership, and verification steps.
+- **Complete gRPC guide:** See [GRPC-README.md](GRPC-README.md) for the full contract, configuration, reservation state machine, error handling, testing, troubleshooting, and known limitations.
 - **Docker Compose environment:** Laravel MySQL, inventory MySQL, Java gRPC inventory, Laravel backend, and React frontend services.
 - **Product response caching:** Redis-backed product-list cache with automatic version-based invalidation, plus conditional HTTP responses using ETags.
 

@@ -151,7 +151,7 @@ class InventoryGrpcIntegrationTest extends TestCase
         $inventory->ensureProductStock($productId, 1);
 
         $catalog = \Mockery::mock(ProductCatalog::class);
-        $catalog->shouldReceive('findByIds')
+        $catalog->shouldReceive('findSnapshotsByIds')
             ->once()
             ->with([$productId])
             ->andReturn([
@@ -189,8 +189,8 @@ class InventoryGrpcIntegrationTest extends TestCase
         try {
             (new GrpcInventoryGateway())->getAvailableQuantity($this->newTestProductId());
             $this->fail('The unavailable gRPC server should cause the request to fail.');
-        } catch (RuntimeException $exception) {
-            $this->assertStringContainsString('Inventory gRPC request failed', $exception->getMessage());
+        } catch (\App\Exceptions\InventoryUnavailableException $exception) {
+            $this->assertStringContainsString('unavailable', strtolower($exception->getMessage()));
         }
 
         $this->assertLessThan(5.5, microtime(true) - $startedAt);
@@ -223,9 +223,8 @@ class InventoryGrpcIntegrationTest extends TestCase
             try {
                 (new GrpcInventoryGateway())->getAvailableQuantity($this->newTestProductId());
                 $this->fail('The nonresponsive gRPC server should exceed the request deadline.');
-            } catch (RuntimeException $exception) {
-                $this->assertStringContainsString('request failed (4)', strtolower($exception->getMessage()));
-                $this->assertStringContainsString('deadline', strtolower($exception->getMessage()));
+            } catch (\App\Exceptions\InventoryUnavailableException $exception) {
+                $this->assertStringContainsString('did not respond within', strtolower($exception->getMessage()));
             }
 
             $elapsed = microtime(true) - $startedAt;

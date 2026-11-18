@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CustomInput from "./CustomInput";
 import { Mail, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "../authSlice";
+import { consumeSessionEndedReason } from "../../../services/authSession";
 import toast from "react-hot-toast";
 
 const LoginForm = () => {
@@ -15,6 +16,20 @@ const LoginForm = () => {
         email: "",
         password: "",
     });
+
+    // Explain why the user was signed out when the API client forced a
+    // re-login (expired token or a session that no longer matched the server).
+    useEffect(() => {
+        const reason = consumeSessionEndedReason();
+        if (!reason) return;
+
+        toast.error(
+            reason === "forbidden"
+                ? "Your session is no longer valid. Please log in again."
+                : "Your session expired. Please log in again.",
+            { id: "session-ended" }
+        );
+    }, []);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });

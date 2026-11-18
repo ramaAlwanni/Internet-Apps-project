@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libz-dev \
         $PHPIZE_DEPS \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" bcmath gd intl mbstring pdo_mysql zip \
+    && docker-php-ext-install -j"$(nproc)" bcmath gd intl mbstring pcntl pdo_mysql zip \
     && pecl install -o -f grpc \
     && docker-php-ext-enable grpc \
     && apt-get purge -y --auto-remove $PHPIZE_DEPS libz-dev \
@@ -28,8 +28,8 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --no-autoloader
 
 COPY . .
-COPY Modules/Product/resources/images/ ./storage/app/public/products/
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader \
+RUN composer clear-cache \
+    && composer install --no-interaction --prefer-dist --optimize-autoloader \
     && mkdir -p storage/app/public/products storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
     && php artisan storage:link \
     && chown -R www-data:www-data storage bootstrap/cache

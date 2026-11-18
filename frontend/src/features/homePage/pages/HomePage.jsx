@@ -16,7 +16,7 @@ const HomePage = () => {
     const [currentPage, setCurrentPage] = useState(1);
 
     const { categories } = useSelector((state) => state.category);
-    const { products, lastPage, isLoading } = useSelector(
+    const { products, lastPage, isLoading, isError, message } = useSelector(
         (state) => state.product,
     );
 
@@ -121,6 +121,14 @@ const HomePage = () => {
                     {isLoading ? (
                         <div className="text-center py-12 text-[#5c212c] font-semibold">
                             Loading products...
+                        </div>
+                    ) : isError ? (
+                        <div className="text-center py-12 px-4 text-[#5c212c] font-semibold">
+                            <p>{message}</p>
+                            <p className="mt-2 text-sm font-medium text-[#732f3a]/80">
+                                Products will appear again as soon as the
+                                inventory service is available.
+                            </p>
                         </div>
                     ) : products.length === 0 ? (
                         <div className="text-center py-12 text-[#5c212c] font-semibold">

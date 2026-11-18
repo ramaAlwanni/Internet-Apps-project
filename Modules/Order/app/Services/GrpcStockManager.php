@@ -3,6 +3,7 @@
 namespace Modules\Order\Services;
 
 use App\Contracts\Inventory\InventoryGateway;
+use App\Exceptions\InventoryUnavailableException;
 use Illuminate\Support\Facades\Log;
 use Modules\Order\Contracts\StockManager;
 use Throwable;
@@ -59,7 +60,11 @@ class GrpcStockManager implements StockManager
                 )
             );
 
-            return $reservation + ['reservation_id' => $reservationId];
+            $reservation['reservation_id'] = $reservationId;
+
+            return $reservation['success']
+                ? $reservation
+                : $this->classifyFailure($reservation);
         } catch (Throwable $exception) {
             Log::error('Inventory gRPC reservation request failed.', [
                 'reservation_id' => $reservationId,
@@ -67,7 +72,9 @@ class GrpcStockManager implements StockManager
             ]);
             return $this->releaseAfterUncertainReservation(
                 $reservationId,
-                'Inventory gRPC error: ' . $exception->getMessage()
+                $exception instanceof InventoryUnavailableException
+                    ? $exception->getMessage()
+                    : 'Inventory gRPC error: ' . $exception->getMessage()
             );
         }
     }
@@ -105,6 +112,27 @@ class GrpcStockManager implements StockManager
             'success' => false,
             'message' => $message,
             'reservation_id' => $reservationId,
+            'error' => 'inventory_unavailable',
         ];
+    }
+
+    /**
+     * Give the caller a stable machine-readable reason while keeping the
+     * warehouse message (which names the unavailable product) intact.
+     */
+    private function classifyFailure(array $reservation): array
+    {
+        $message = (string) ($reservation['message'] ?? 'Stock reservation failed.');
+        $normalized = strtolower($message);
+
+        $reservation['error'] = match (true) {
+            str_contains($normalized, 'insufficient'),
+            str_contains($normalized, 'not enough'),
+            str_contains($normalized, 'out of stock') => 'insufficient_stock',
+            str_contains($normalized, 'not found') => 'product_not_found',
+            default => 'reservation_rejected',
+        };
+
+        return $reservation;
     }
 }
