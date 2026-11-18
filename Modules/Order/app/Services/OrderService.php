@@ -5,6 +5,8 @@ namespace Modules\Order\Services;
 use App\Contracts\Catalog\ProductCatalog;
 use App\Contracts\Identity\UserDirectory;
 use App\Exceptions\InventoryUnavailableException;
+use App\Jobs\SendOrderEmailJob;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -124,6 +126,16 @@ class OrderService
                 foreach ($orderItems as $item) {
                     $order->items()->create($item);
                 }
+
+                $user = Auth::user();
+
+                SendOrderEmailJob::dispatch([
+                    'order_id' => $order->id,
+                    'user_email' => $user->email,
+                    'user_name' => $user->name,
+                    'total_price' => $order->total_amount,
+                    'items' => $orderItems,
+                ])->onQueue('order_emails_queue');
 
                 return $order->load('items');
             });
