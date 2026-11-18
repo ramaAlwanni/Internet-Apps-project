@@ -1,7 +1,15 @@
 import { X, Calendar, Truck, ArrowLeft } from "lucide-react";
+import { useOrderStatusRealtime } from "../hooks/useOrderStatusRealtime";
 
 const OrderDetailsModal = ({ isOpen, onClose, order }) => {
+    const liveStatus = useOrderStatusRealtime(
+        isOpen ? order?.id : null,
+        order?.status,
+    );
+
     if (!isOpen || !order) return null;
+
+    const status = liveStatus ?? order.status;
 
     const dateObj = new Date(order.created_at);
     const formattedDate = dateObj.toLocaleDateString("en-US", {
@@ -41,7 +49,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                             </span>
                         </div>
                         <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold capitalize">
-                            • {order.status}
+                            • {status}
                         </span>
                     </div>
 
@@ -64,7 +72,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                                     Order Status
                                 </p>
                                 <p className="opacity-70 text-[10px] capitalize">
-                                    {order.status}
+                                    {status}
                                 </p>
                             </div>
                         </div>

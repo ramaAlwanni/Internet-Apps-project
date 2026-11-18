@@ -2,30 +2,39 @@
 
 namespace Modules\Order\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Exceptions\BaseException;
 use App\Contracts\Catalog\ProductCatalog;
+use App\Http\Controllers\Controller;
+use App\Jobs\SendOrderEmailJob;
 use App\Rules\ProductExists;
+use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
-use Modules\Order\Services\OrderService;
-use Throwable;
 use Modules\Order\Http\Requests\UpdateOrderStatusRequest;
 use Modules\Order\Models\Order;
+use Modules\Order\Services\OrderService;
+use Throwable;
 
 class OrderController extends Controller
 {
+    use ApiResponseTrait;
     public function __construct(
         private readonly OrderService $orderService,
         private readonly ProductCatalog $productCatalog
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
+        $pagination = $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Orders retrieved successfully',
             'data' => $this->orderService->getUserOrders(
-                $request->user()->id
+                $request->user()->id,
+                (int) ($pagination['per_page'] ?? 10)
             ),
         ]);
     }
@@ -42,37 +51,32 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'items' => [
-                'required',
-                'array',
-                'min:1',
-            ],
-
-            'items.*.product_id' => [
-                'required',
-                'integer',
-                'distinct',
-                new ProductExists($this->productCatalog),
-            ],
-
-            'items.*.quantity' => [
-                'required',
-                'integer',
-                'min:1',
-            ],
+            'items' => ['required','array','min:1'],
+            'items.*.product_id' => ['required','integer', 'distinct', new ProductExists($this->productCatalog)],
+            'items.*.quantity' => ['required', 'integer','min:1'],
         ]);
-
         try {
-            $order = $this->orderService->createOrder(
-                $request->user()->id,
-                $validated['items']
+            $order = $this->orderService->createOrder($request->user()->id, $validated['items']);
+
+            return $this->successResponse(
+                'Order created successfully. A confirmation email will be sent shortly.',
+                $order,
+                201
             );
+
 
             return response()->json([
                 'success' => true,
                 'message' => 'Order created successfully',
                 'data' => $order,
             ], 201);
+        } catch (BaseException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'data' => null,
+            ], $exception->getHttpCode());
+
         } catch (Throwable $exception) {
             return response()->json([
                 'success' => false,
@@ -112,33 +116,33 @@ class OrderController extends Controller
     }
 
     public function updateStatus(
-    UpdateOrderStatusRequest $request,
-    Order $order
-) {
-    /*
-     * يستخدم OrderPolicy::updateStatus()
-     * ويتحقق من صلاحية change-order-status.
-     */
-    $this->authorize('updateStatus', $order);
+        UpdateOrderStatusRequest $request,
+        Order $order
+    ) {
+        /*
+         * Uses OrderPolicy::updateStatus()
+         * and checks change-order-status permission.
+         */
+        $this->authorize('updateStatus', $order);
 
-    try {
-        $updatedOrder = $this->orderService->updateStatus(
-            $order->id,
-            $request->validated('status')
-        );
+        try {
+            $updatedOrder = $this->orderService->updateStatus(
+                $order->id,
+                $request->validated('status')
+            );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Order status updated successfully',
-            'data' => $updatedOrder,
-        ]);
-    } catch (\Throwable $exception) {
-        return response()->json([
-            'success' => false,
-            'message' => $exception->getMessage(),
-            'data' => null,
-        ], 409);
+            return response()->json([
+                'success' => true,
+                'message' => 'Order status updated successfully',
+                'data' => $updatedOrder,
+            ]);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'data' => null,
+            ], 409);
+        }
     }
 }
 
-}

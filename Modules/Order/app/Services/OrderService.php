@@ -4,11 +4,17 @@ namespace Modules\Order\Services;
 
 use App\Contracts\Catalog\ProductCatalog;
 use App\Contracts\Identity\UserDirectory;
+use App\Exceptions\InventoryUnavailableException;
+use App\Jobs\SendOrderEmailJob;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Order\Contracts\StockManager;
+use Modules\Order\Exceptions\InsufficientStockException;
 use Modules\Order\Models\Order;
+use Modules\Order\Events\OrderCreatedEvent;
+use Modules\Order\Events\OrderStatusUpdatedEvent;
 
 class OrderService
 {
@@ -25,13 +31,45 @@ class OrderService
     ): Order {
         $reservationId = (string) Str::uuid();
 
-        $reservation = $this->stockManager->reserve(
-            $reservationId,
-            $items
-        );
+        try {
+            $reservation = $this->stockManager->reserve(
+                $reservationId,
+                $items
+            );
+        } catch (InsufficientStockException | InventoryUnavailableException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            if (str_contains(strtolower($exception->getMessage()), 'insufficient stock')) {
+                throw new InsufficientStockException(
+                    $this->insufficientStockMessage($exception->getMessage()),
+                    $exception
+                );
+            }
+
+            throw $exception;
+        }
 
         if (!$reservation['success']) {
-            throw new \RuntimeException($reservation['message']);
+            $message = (string) (
+                $reservation['message']
+                    ?? 'Stock reservation failed.'
+            );
+            $error = $reservation['error'] ?? null;
+
+            if ($error === 'inventory_unavailable') {
+                throw new InventoryUnavailableException($message);
+            }
+
+            if (
+                $error === 'insufficient_stock'
+                || str_contains(strtolower($message), 'insufficient stock')
+            ) {
+                throw new InsufficientStockException(
+                    $this->insufficientStockMessage($message)
+                );
+            }
+
+            throw new \RuntimeException($message);
         }
 
         try {
@@ -43,7 +81,10 @@ class OrderService
                     ->values()
                     ->all();
 
-                $products = $this->productCatalog->findByIds($productIds);
+                // Stock is already reserved at this point. Read catalog data
+                // locally so a warehouse failure cannot fail the order save
+                // (and force a reservation release) after a successful reserve.
+                $products = $this->productCatalog->findSnapshotsByIds($productIds);
 
                 if (count($products) !== count($productIds)) {
                     throw new \RuntimeException(
@@ -85,6 +126,16 @@ class OrderService
                 foreach ($orderItems as $item) {
                     $order->items()->create($item);
                 }
+
+                $user = Auth::user();
+
+                SendOrderEmailJob::dispatch([
+                    'order_id' => $order->id,
+                    'user_email' => $user->email,
+                    'user_name' => $user->name,
+                    'total_price' => $order->total_amount,
+                    'items' => $orderItems,
+                ])->onQueue('order_emails_queue');
 
                 return $order->load('items');
             });
@@ -140,30 +191,45 @@ class OrderService
             );
         }
 
+        // Broadcast only once the order and its stock reservation are safely
+        // committed, so the admin table never shows an order that was rolled back.
+        // A Reverb outage must not turn a committed order into a 500 response,
+        // so we log the missed realtime update and keep the synchronous broadcast.
+        try {
+            event(new OrderCreatedEvent($order));
+        } catch (\Throwable $exception) {
+            Log::warning('Order created but realtime broadcast failed.', [
+                'order_id' => $order->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
         return $order;
     }
 
-    public function getUserOrders(int $userId)
+    private function insufficientStockMessage(string $warehouseMessage): string
     {
-        DB::flushQueryLog();
-        DB::enableQueryLog();
+        $warehouseMessage = trim($warehouseMessage);
 
-        try {
-            $orders = Order::query()
-                ->with('items')
-                ->where('user_id', $userId)
-                ->latest()
-                ->get();
-
-            Log::info('User orders query count.', [
-                'user_id' => $userId,
-                'query_count' => count(DB::getQueryLog()),
-            ]);
-
-            return $orders;
-        } finally {
-            DB::disableQueryLog();
+        if ($warehouseMessage === '') {
+            return InsufficientStockException::DEFAULT_MESSAGE;
         }
+
+        if (str_contains(strtolower($warehouseMessage), 'insufficient stock')) {
+            return $warehouseMessage
+                . ' Please reduce the quantity or choose another product.';
+        }
+
+        return $warehouseMessage;
+    }
+
+    public function getUserOrders(int $userId, int $perPage = 10)
+    {
+        return Order::query()
+            ->with('items')
+            ->where('user_id', $userId)
+            ->latest()
+            ->paginate($perPage);
     }
 
     public function getAllOrders()
@@ -207,41 +273,60 @@ class OrderService
         int $orderId,
         string $newStatus
     ): Order {
-        return DB::transaction(function () use ($orderId, $newStatus) {
+        $changed = false;
+
+        $order = DB::transaction(function () use ($orderId, $newStatus, &$changed) {
             $order = Order::query()
                 ->lockForUpdate()
                 ->findOrFail($orderId);
 
-            $allowedTransitions = [
-                Order::STATUS_PENDING => [
-                    Order::STATUS_CONFIRMED,
-                    Order::STATUS_CANCELLED,
-                ],
-                Order::STATUS_CONFIRMED => [
-                    Order::STATUS_PROCESSING,
-                    Order::STATUS_CANCELLED,
-                ],
-                Order::STATUS_PROCESSING => [
-                    Order::STATUS_SHIPPED,
-                ],
-                Order::STATUS_SHIPPED => [
-                    Order::STATUS_DELIVERED,
-                ],
-                Order::STATUS_DELIVERED => [],
-                Order::STATUS_CANCELLED => [],
+            if (!in_array($newStatus, Order::statuses(), true)) {
+                throw new \RuntimeException(
+                    "Unknown order status: {$newStatus}."
+                );
+            }
+
+            // Delivered and cancelled orders are final: they can no longer be
+            // edited, otherwise a completed sale could silently be reopened.
+            $finalStatuses = [
+                Order::STATUS_DELIVERED,
+                Order::STATUS_CANCELLED,
             ];
 
-            $allowedStatuses = $allowedTransitions[$order->status] ?? [];
-
-            if (!in_array($newStatus, $allowedStatuses, true)) {
+            if (
+                in_array($order->status, $finalStatuses, true)
+                && $newStatus !== $order->status
+            ) {
                 throw new \RuntimeException(
                     "Cannot change order status from {$order->status} to {$newStatus}."
                 );
             }
 
+            // Selecting the current status is a valid no-op (no notification).
+            if ($newStatus === $order->status) {
+                return $order->load('items');
+            }
+
             $order->update(['status' => $newStatus]);
+            $changed = true;
 
             return $order->load('items');
         });
+
+        // Broadcast only after the transaction commits, so clients never
+        // receive a status change that was later rolled back.
+        if ($changed) {
+            try {
+                event(new OrderStatusUpdatedEvent($order));
+            } catch (\Throwable $exception) {
+                Log::warning('Order status updated but realtime broadcast failed.', [
+                    'order_id' => $order->id,
+                    'status' => $order->status,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $order;
     }
 }

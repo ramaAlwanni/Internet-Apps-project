@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { LogOut, User as UserIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import NotificationsDropdown from "../../notifications/components/NotificationsDropdown";
+import NotificationBell from "../../notifications/components/NotificationBell";
+import { useCustomerOrderNotifications } from "../../notifications/hooks/useCustomerOrderNotifications";
 import { logoutUser } from "../../auth/authSlice";
 
 const Header = () => {
@@ -13,6 +15,10 @@ const Header = () => {
 
     const { user } = useSelector((state) => state.auth);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+    // Notifies the customer about order status changes on every page that
+    // renders this shared header (home, cart, orders).
+    useCustomerOrderNotifications(user?.id);
 
     const isHome = location.pathname === "/home";
     const isCart = location.pathname === "/cart";
@@ -86,18 +92,12 @@ const Header = () => {
             <div className="flex items-center gap-5">
                 {/* Notifications */}
                 <div className="relative">
-                    {/* <button
-                        type="button"
+                    <NotificationBell
+                        isOpen={isNotificationsOpen}
                         onClick={() =>
                             setIsNotificationsOpen(!isNotificationsOpen)
                         }
-                        className="relative w-9 h-9 rounded-full bg-white/50 hover:bg-white text-[#5c212c] flex items-center justify-center transition-all cursor-pointer shadow-xs border border-white/40"
-                    >
-                        <Bell className="w-4 h-4 text-[#823945]" />
-                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-extrabold flex items-center justify-center shadow-xs">
-                            3
-                        </span>
-                    </button> */}
+                    />
 
                     <NotificationsDropdown
                         isOpen={isNotificationsOpen}
