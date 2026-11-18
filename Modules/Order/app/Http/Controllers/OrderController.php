@@ -2,8 +2,8 @@
 
 namespace Modules\Order\Http\Controllers;
 
-use App\Contracts\Catalog\ProductCatalog;
 use App\Exceptions\BaseException;
+use App\Contracts\Catalog\ProductCatalog;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendOrderEmailJob;
 use App\Rules\ProductExists;
@@ -64,6 +64,7 @@ class OrderController extends Controller
                 201
             );
 
+
             return response()->json([
                 'success' => true,
                 'message' => 'Order created successfully',
@@ -75,6 +76,7 @@ class OrderController extends Controller
                 'message' => $exception->getMessage(),
                 'data' => null,
             ], $exception->getHttpCode());
+
         } catch (Throwable $exception) {
             return response()->json([
                 'success' => false,
@@ -143,3 +145,4 @@ class OrderController extends Controller
         }
     }
 }
+

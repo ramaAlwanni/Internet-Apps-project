@@ -193,7 +193,16 @@ class OrderService
 
         // Broadcast only once the order and its stock reservation are safely
         // committed, so the admin table never shows an order that was rolled back.
-        event(new OrderCreatedEvent($order));
+        // A Reverb outage must not turn a committed order into a 500 response,
+        // so we log the missed realtime update and keep the synchronous broadcast.
+        try {
+            event(new OrderCreatedEvent($order));
+        } catch (\Throwable $exception) {
+            Log::warning('Order created but realtime broadcast failed.', [
+                'order_id' => $order->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
 
         return $order;
     }
@@ -307,7 +316,15 @@ class OrderService
         // Broadcast only after the transaction commits, so clients never
         // receive a status change that was later rolled back.
         if ($changed) {
-            event(new OrderStatusUpdatedEvent($order));
+            try {
+                event(new OrderStatusUpdatedEvent($order));
+            } catch (\Throwable $exception) {
+                Log::warning('Order status updated but realtime broadcast failed.', [
+                    'order_id' => $order->id,
+                    'status' => $order->status,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
         return $order;
