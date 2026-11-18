@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 FROM php:8.2-fpm-bookworm AS backend
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,6 +17,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && pecl install -o -f grpc \
     && docker-php-ext-enable grpc \
     && apt-get purge -y --auto-remove $PHPIZE_DEPS libz-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# ext-sockets is required by php-amqplib (RabbitMQ). Keep it in a separate
+# layer so the expensive grpc compile above stays cached.
+RUN apt-get update && apt-get install -y --no-install-recommends $PHPIZE_DEPS \
+    && docker-php-ext-install sockets \
+    && apt-get purge -y --auto-remove $PHPIZE_DEPS \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

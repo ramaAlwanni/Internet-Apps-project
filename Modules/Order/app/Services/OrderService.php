@@ -5,6 +5,8 @@ namespace Modules\Order\Services;
 use App\Contracts\Catalog\ProductCatalog;
 use App\Contracts\Identity\UserDirectory;
 use App\Exceptions\InventoryUnavailableException;
+use App\Jobs\SendOrderEmailJob;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -125,6 +127,16 @@ class OrderService
                     $order->items()->create($item);
                 }
 
+                $user = Auth::user();
+
+                SendOrderEmailJob::dispatch([
+                    'order_id' => $order->id,
+                    'user_email' => $user->email,
+                    'user_name' => $user->name,
+                    'total_price' => $order->total_amount,
+                    'items' => $orderItems,
+                ])->onQueue('order_emails_queue');
+
                 return $order->load('items');
             });
 
@@ -181,7 +193,16 @@ class OrderService
 
         // Broadcast only once the order and its stock reservation are safely
         // committed, so the admin table never shows an order that was rolled back.
-        event(new OrderCreatedEvent($order));
+        // A Reverb outage must not turn a committed order into a 500 response,
+        // so we log the missed realtime update and keep the synchronous broadcast.
+        try {
+            event(new OrderCreatedEvent($order));
+        } catch (\Throwable $exception) {
+            Log::warning('Order created but realtime broadcast failed.', [
+                'order_id' => $order->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
 
         return $order;
     }
@@ -295,7 +316,15 @@ class OrderService
         // Broadcast only after the transaction commits, so clients never
         // receive a status change that was later rolled back.
         if ($changed) {
-            event(new OrderStatusUpdatedEvent($order));
+            try {
+                event(new OrderStatusUpdatedEvent($order));
+            } catch (\Throwable $exception) {
+                Log::warning('Order status updated but realtime broadcast failed.', [
+                    'order_id' => $order->id,
+                    'status' => $order->status,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
         return $order;
