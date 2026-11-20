@@ -5,8 +5,9 @@ namespace Modules\Order\Services;
 use App\Contracts\Catalog\ProductCatalog;
 use App\Contracts\Identity\UserDirectory;
 use App\Exceptions\InventoryUnavailableException;
-use App\Jobs\SendOrderEmailJob;
-use Illuminate\Support\Facades\Auth;
+//use App\Jobs\SendOrderEmailJob;
+use Modules\Order\Models\OrderEmailOutbox;
+//use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -24,6 +25,7 @@ class OrderService
         private readonly UserDirectory $userDirectory
     ) {
     }
+
 
     public function createOrder(
         int $userId,
@@ -127,15 +129,36 @@ class OrderService
                     $order->items()->create($item);
                 }
 
-                $user = Auth::user();
+                // $user = Auth::user();
 
-                SendOrderEmailJob::dispatch([
+                /*  SendOrderEmailJob::dispatch([
                     'order_id' => $order->id,
                     'user_email' => $user->email,
                     'user_name' => $user->name,
                     'total_price' => $order->total_amount,
                     'items' => $orderItems,
-                ])->onQueue('order_emails_queue');
+                ])->onQueue('order_emails_queue');*/
+                /*  if (!$user) {
+    throw new \RuntimeException('Authenticated user was not found.');
+}*/
+                $user = $this->userDirectory->findBasicById($userId);
+
+                if (!$user) {
+                    throw new \RuntimeException('User was not found.');
+                }
+
+                OrderEmailOutbox::create([
+                    'order_id' => $order->id,
+                    'payload' => [
+                        'order_id' => $order->id,
+                        'user_email' => $user['email'],
+                        'user_name' => $user['name'],
+                        'total_price' => $order->total_amount,
+                        'items' => $orderItems,
+                    ],
+                    'status' => 'pending',
+                    'available_at' => now(),
+                ]);
 
                 return $order->load('items');
             });

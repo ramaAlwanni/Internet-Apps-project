@@ -33,7 +33,12 @@ class UserService
         'message' => ['Invalid credentials provided.'],
     ]);
 }
-        return ['user' => auth()->user(), 'token' => $token];
+       // return ['user' => auth()->user(), 'token' => $token];
+       return [
+    'user' => FacadesJWTAuth::user(),
+    'token' => $token,
+];
+
     }
 
     public function signOut(): void
