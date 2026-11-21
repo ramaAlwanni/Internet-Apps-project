@@ -13,18 +13,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libz-dev \
         $PHPIZE_DEPS \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" bcmath gd intl mbstring pcntl pdo_mysql zip \
-    && pecl install -o -f grpc \
+    && docker-php-ext-install -j"$(nproc)" bcmath gd intl mbstring pdo_mysql zip \
+    && printf "n" | pecl install grpc \
     && docker-php-ext-enable grpc \
     && apt-get purge -y --auto-remove $PHPIZE_DEPS libz-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# ext-sockets is required by php-amqplib (RabbitMQ). Keep it in a separate
-# layer so the expensive grpc compile above stays cached.
+# pcntl is required by Laravel Reverb.
+# sockets is required by php-amqplib for RabbitMQ.
 RUN apt-get update && apt-get install -y --no-install-recommends $PHPIZE_DEPS \
-    && docker-php-ext-install sockets \
+    && docker-php-ext-install sockets pcntl \
+    && php -m | grep -i '^pcntl$' \
+    && php -r "exit(defined('SIGINT') ? 0 : 1);" \
     && apt-get purge -y --auto-remove $PHPIZE_DEPS \
     && rm -rf /var/lib/apt/lists/*
+
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
