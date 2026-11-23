@@ -28,7 +28,10 @@ return [
         '*',
     ],
 
-    'exposed_headers' => [],
+   'exposed_headers' => [
+    'X-Backend-Instance',
+],
+
 
     'max_age' => 0,
 
