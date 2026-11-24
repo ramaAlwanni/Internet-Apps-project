@@ -285,7 +285,7 @@ services:
 
   rabbitmq-worker:
     image: internet-apps-backend:local
-    container_name: internet-apps-rabbitmq-worker
+    # container_name: internet-apps-rabbitmq-worker
     command:
       [
         "sh",
