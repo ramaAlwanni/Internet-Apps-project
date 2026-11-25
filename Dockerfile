@@ -3,6 +3,7 @@ FROM php:8.2-fpm-bookworm AS backend
 RUN apt-get update && apt-get install -y --no-install-recommends \
         nginx \
         supervisor \
+        curl \
         unzip \
         libfreetype6-dev \
         libicu-dev \
@@ -40,10 +41,15 @@ COPY . .
 RUN composer clear-cache \
     && composer install --no-interaction --prefer-dist --optimize-autoloader \
     && mkdir -p storage/app/public/products storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
+    && php artisan config:clear \
+    && php artisan route:clear \
+    && php artisan view:clear \
+    && rm -f bootstrap/cache/*.tmp \
     && php artisan storage:link \
     && chown -R www-data:www-data storage bootstrap/cache
 
 COPY docker/nginx.conf /etc/nginx/sites-available/default
+COPY docker/php/zz-perf.ini /usr/local/etc/php/conf.d/zz-perf.ini
 COPY docker/supervisord.conf /etc/supervisor/supervisord.conf
 
 EXPOSE 80

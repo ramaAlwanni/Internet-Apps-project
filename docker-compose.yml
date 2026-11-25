@@ -158,11 +158,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    # ports:
-    #   - "${BACKEND_PORT:-8080}:80"
+    # Three independent PHP-FPM/Nginx containers. Docker DNS publishes one A
+    # record per replica, which Nginx re-resolves every 5 seconds.
+    deploy:
+      replicas: 3
+    # No host ports: the only entry point is the load balancer.
     environment:
       APP_ENV: "${APP_ENV:-local}"
       APP_DEBUG: "${APP_DEBUG:-true}"
+      # Fail fast instead of silently giving replicas different encryption keys.
+      APP_KEY: "${APP_KEY:?APP_KEY must be set in .env}"
+      SESSION_DRIVER: database
       DB_CONNECTION: mysql
       DB_HOST: mysql-primary
       DB_WRITE_HOST: "${DB_WRITE_HOST:-mysql-primary}"
@@ -171,6 +177,7 @@ services:
       DB_DATABASE: "${DB_DATABASE:-internet_apps}"
       DB_USERNAME: "${DB_USERNAME:-internet_apps}"
       DB_PASSWORD: "${DB_PASSWORD:-local_dev_password}"
+      # Shared cache/rate-limit/counter state; never `file` across replicas.
       CACHE_STORE: redis
       REDIS_CLIENT: predis
       REDIS_HOST: redis
@@ -179,11 +186,20 @@ services:
       GRPC_INVENTORY_HOST: inventory-service:9090
       GRPC_INVENTORY_TIMEOUT: "${GRPC_INVENTORY_TIMEOUT:-5}"
     volumes:
-      - .:/var/www/html
-      - ./.env:/var/www/html/.env
-      - ./docker/nginx.conf:/etc/nginx/sites-available/default:ro
-      - ./docker/php/zz-perf.ini:/usr/local/etc/php/conf.d/zz-perf.ini:ro
+      # Code is baked into the image. Do not bind-mount the whole source tree:
+      # that would make compiled views/logs/bootstrap cache shared mutable host
+      # state and would let a stale host cache override Compose env vars.
+      - ./.env:/var/www/html/.env:ro
+      # Deliberately shared by all replicas (image uploads must be visible to
+      # whichever replica serves the next request). Use S3 in production.
       - product_images:/var/www/html/storage/app/public/products
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/up >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -202,20 +218,28 @@ services:
       - "${BACKEND_PORT:-8080}:80"
     volumes:
       - ./docker/loadbalancer.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/up >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - app-network
 
   reverb:
     image: internet-apps-backend:local
-    container_name: laravel_reverb
     command: php artisan reverb:start --host=0.0.0.0 --port=6001
     ports:
       - "${REVERB_PORT:-6001}:6001"
     environment:
       APP_ENV: "${APP_ENV:-local}"
       APP_DEBUG: "${APP_DEBUG:-true}"
+      APP_KEY: "${APP_KEY:?APP_KEY must be set in .env}"
       BROADCAST_CONNECTION: reverb
       REVERB_APP_ID: "${REVERB_APP_ID:-100100}"
       REVERB_APP_KEY: "${REVERB_APP_KEY:-local-reverb-key}"
@@ -223,16 +247,16 @@ services:
       REVERB_HOST: "0.0.0.0"
       REVERB_PORT: "6001"
       REVERB_SCHEME: "http"
+      # Reverb pub/sub state lives in Redis, not in the container filesystem.
       CACHE_STORE: redis
       REDIS_CLIENT: predis
       REDIS_HOST: redis
       REDIS_PORT: "6379"
     volumes:
-      - .:/var/www/html
-      - ./.env:/var/www/html/.env
+      - ./.env:/var/www/html/.env:ro
     depends_on:
-      - backend
       - redis
+    restart: unless-stopped
     networks:
       - app-network
 
@@ -246,22 +270,21 @@ services:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
-      - backend
+      - loadbalancer
     networks:
       - app-network
 
   k6:
     image: grafana/k6:latest
-    container_name: k6-load-test
     profiles:
       - load-test
     volumes:
       - ./tests/k6:/tests
-    command: ["run", "/tests/read-write-verification.js"]
+    command: ["run", "/tests/load-balancer-test.js"]
     networks:
       - app-network
     depends_on:
-      - backend
+      - loadbalancer
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -275,25 +298,62 @@ services:
       RABBITMQ_DEFAULT_VHOST: "${RABBITMQ_VHOST:-/}"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    # `ping` only proves the Erlang node is up; it can go healthy before the
+    # AMQP listener on 5672 accepts connections and rabbitmq:setup dies with
+    # "Connection refused". Check the actual listener instead.
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_listener", "5672"]
+      interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 20s
+    networks:
+      - app-network
+
+  # Declared once. Running `rabbitmq:setup` in every worker causes a cold-start
+  # race and can leave a worker dead if queue arguments already exist with
+  # different DLQ settings (PRECONDITION_FAILED).
+  rabbitmq-setup:
+    image: internet-apps-backend:local
+    command: ["php", "artisan", "rabbitmq:setup"]
+    environment:
+      APP_ENV: "${APP_ENV:-local}"
+      APP_KEY: "${APP_KEY:?APP_KEY must be set in .env}"
+      QUEUE_CONNECTION: rabbitmq
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: "${RABBITMQ_USER:-guest}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:-guest}"
+      RABBITMQ_VHOST: "${RABBITMQ_VHOST:-/}"
+    volumes:
+      - ./.env:/var/www/html/.env:ro
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: "no"
     networks:
       - app-network
 
   rabbitmq-worker:
     image: internet-apps-backend:local
-    # container_name: internet-apps-rabbitmq-worker
+    # No container_name: Compose generates one name per replica.
+    deploy:
+      replicas: 3
+    # prefetch-count=1 gives fair dispatch: a busy/slow worker never holds more
+    # than one unacked message, so the other two replicas can take the rest.
     command:
       [
-        "sh",
-        "-c",
-        "php artisan rabbitmq:setup && php artisan rabbitmq:consume --queue=order_emails_queue --tries=3 --prefetch-count=1",
+        "php",
+        "artisan",
+        "rabbitmq:consume",
+        "--queue=order_emails_queue",
+        "--tries=3",
+        "--prefetch-count=1",
       ]
     environment:
       APP_ENV: "${APP_ENV:-local}"
+      APP_KEY: "${APP_KEY:?APP_KEY must be set in .env}"
+      SESSION_DRIVER: database
       DB_CONNECTION: mysql
       DB_HOST: mysql-primary
       DB_WRITE_HOST: mysql-primary
@@ -316,11 +376,12 @@ services:
       ORDER_STOCK_MANAGER: grpc
       GRPC_INVENTORY_HOST: inventory-service:9090
     volumes:
-      - .:/var/www/html
-      - ./.env:/var/www/html/.env
+      - ./.env:/var/www/html/.env:ro
     depends_on:
       rabbitmq:
         condition: service_healthy
+      rabbitmq-setup:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -343,6 +404,7 @@ services:
     environment:
       APP_ENV: "${APP_ENV:-local}"
       APP_DEBUG: "${APP_DEBUG:-true}"
+      APP_KEY: "${APP_KEY:?APP_KEY must be set in .env}"
 
       DB_CONNECTION: mysql
       DB_HOST: mysql-primary
@@ -367,8 +429,7 @@ services:
       RABBITMQ_QUEUE: order_emails_queue
 
     volumes:
-      - .:/var/www/html
-      - ./.env:/var/www/html/.env
+      - ./.env:/var/www/html/.env:ro
 
     depends_on:
       migrate:
