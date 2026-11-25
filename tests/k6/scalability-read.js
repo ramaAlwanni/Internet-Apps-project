@@ -20,7 +20,7 @@ export const options = {
 export default function () {
     const response = http.get("http://loadbalancer/", {
         headers: {
-            "User-Agent": "k6-final-20261125-0145",
+            "User-Agent": "k6-final-20261125-0147",
         },
         tags: { test_name: "scalability_read" },
     });
