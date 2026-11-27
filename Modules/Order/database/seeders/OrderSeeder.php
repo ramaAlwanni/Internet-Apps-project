@@ -5,8 +5,6 @@ namespace Modules\Order\Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Modules\Order\Models\Order;
-use Modules\Product\Models\Product;
-use Modules\User\Models\User;
 use RuntimeException;
 
 class OrderSeeder extends Seeder
@@ -21,10 +19,10 @@ class OrderSeeder extends Seeder
 
     public function run(): void
     {
-        $userIds = User::query()->pluck('id')->all();
-        $products = Product::query()
+        $userIds = DB::table('users')->pluck('id')->all();
+        $products = DB::table('products')
             ->get(['id', 'name', 'price'])
-            ->map(fn (Product $product): array => [
+            ->map(fn ($product): array => [
                 'id' => (int) $product->id,
                 'name' => $product->name,
                 'price_cents' => (int) round((float) $product->price * 100),

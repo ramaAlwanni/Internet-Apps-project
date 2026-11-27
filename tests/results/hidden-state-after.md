@@ -1,9 +1,9 @@
 ﻿# Hidden state verification - after
 
-- Time: 2026-11-26 00:37:16
-- Branch: razan-inventory-local
+- Time: 2026-11-27 16:11:47
+- Branch: requirement-5-fix
 - Expected result for this phase: PASS
-- Failover: stopped 6923783f6cda: during ok=95 fail=0 (served by 244116c26957,8e20b3bd9e52); after restore ok=60 fail=0
+- Failover: stopped 71a11c974b3c: during ok=119 fail=0 (served by e51a0f2bf2f0,16b6f32d1145); after restore ok=60 fail=0
 
 | Check | Result | Evidence |
 |---|---|---|
@@ -13,7 +13,7 @@
 | CORS on /instance allows SPA, blocks other origins, exposes instance header | PASS | allowed: ACAO=[http://localhost:5173] expose=[X-Backend-Instance]; evil: ACAO=[] |
 | backend healthcheck configured and healthy | PASS | configured=True; statuses=healthy,healthy,healthy; curl=/usr/bin/curl |
 | nginx least_conn + max_fails + timeouts | PASS | directives=True; nginx -t: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok nginx: configuration file /etc/nginx/nginx.conf test is successful |
-| zero-downtime failover with 3 replicas | PASS | stopped 6923783f6cda: during ok=95 fail=0 (served by 244116c26957,8e20b3bd9e52); after restore ok=60 fail=0 |
+| zero-downtime failover with 3 replicas | PASS | stopped 71a11c974b3c: during ok=119 fail=0 (served by e51a0f2bf2f0,16b6f32d1145); after restore ok=60 fail=0 |
 
 Reproduce with:
 

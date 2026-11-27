@@ -43,7 +43,9 @@ RUN composer clear-cache \
     && rm -f bootstrap/cache/*.php bootstrap/cache/*.tmp \
     && mkdir -p storage/app/public/products storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
     && php artisan storage:link \
-    && chown -R www-data:www-data storage bootstrap/cache
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && rm -f storage/logs/*.log \
+    && install -o www-data -g www-data -m 664 /dev/null storage/logs/laravel.log
 
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 COPY docker/supervisord.conf /etc/supervisor/supervisord.conf

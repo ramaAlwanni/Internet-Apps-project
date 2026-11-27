@@ -20,6 +20,16 @@ foreach ($requiredEnvironment as $name => $expectedValue) {
     $_SERVER[$name] = $expectedValue;
 }
 
+/*
+ * PHPUnit's <env force="true"> updates $_ENV and getenv() but leaves the
+ * container-provided $_SERVER values untouched. Laravel's env() helper reads
+ * $_SERVER first, so without this line the test suite would use the shared
+ * Redis cache configured in Compose and write sqlite test fixtures into it.
+ */
+$_ENV['CACHE_STORE'] = 'array';
+$_SERVER['CACHE_STORE'] = 'array';
+putenv('CACHE_STORE=array');
+
 $configCachePath = 'bootstrap/cache/config.testing.php';
 putenv('APP_CONFIG_CACHE=' . $configCachePath);
 $_ENV['APP_CONFIG_CACHE'] = $configCachePath;
