@@ -11,3 +11,6 @@ public/build
 public/hot
 storage/app/public/**
 storage/logs/*
+storage/framework/views/*
+bootstrap/cache/*.php
+bootstrap/cache/*.tmp

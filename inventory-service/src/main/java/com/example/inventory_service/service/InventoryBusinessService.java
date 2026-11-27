@@ -1,5 +1,7 @@
 package com.example.inventory_service.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,8 @@ import java.util.TreeMap;
 
 @Service
 public class InventoryBusinessService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(InventoryBusinessService.class);
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -268,6 +272,46 @@ public class InventoryBusinessService {
                 reservationId
         );
         return ReservationResult.succeeded();
+    }
+
+    /**
+     * Releases reservations that were left RESERVED when the caller died before
+     * sending commit or release. Rows are locked FOR UPDATE so a concurrent
+     * commitReservation() cannot succeed after we decide to release them.
+     *
+     * @return number of reservations that were successfully released
+     */
+    @Transactional
+    public int releaseStaleReservations(int staleAfterMinutes, int batchSize) {
+        if (staleAfterMinutes <= 0 || batchSize <= 0) {
+            throw new IllegalArgumentException(
+                    "staleAfterMinutes and batchSize must be greater than zero."
+            );
+        }
+
+        List<String> staleIds = jdbcTemplate.query(
+                "SELECT id FROM reservations WHERE status = 'RESERVED' "
+                        + "AND TIMESTAMPDIFF(MINUTE, created_at, NOW()) >= ? "
+                        + "ORDER BY created_at LIMIT ? FOR UPDATE",
+                (resultSet, rowNumber) -> resultSet.getString("id"),
+                staleAfterMinutes,
+                batchSize
+        );
+
+        int released = 0;
+        for (String reservationId : staleIds) {
+            ReservationResult result = releaseReservation(reservationId);
+            if (result.success()) {
+                released++;
+            } else {
+                LOGGER.warn(
+                        "Could not release stale reservation {}: {}",
+                        reservationId,
+                        result.message()
+                );
+            }
+        }
+        return released;
     }
 
     @Transactional
