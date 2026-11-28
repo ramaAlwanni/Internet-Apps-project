@@ -156,11 +156,12 @@ try {
         $Token = Get-ApiToken -Client $client
     }
 
-    $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-    $logPath = Join-Path $projectRoot "storage\logs\laravel.log"
-    $logOffset = 0L
-    if (Test-Path -LiteralPath $logPath) {
-        $logOffset = (Get-Item -LiteralPath $logPath).Length
+    # Laravel logs live inside the replicas now that the source code is baked
+    # into the image, so snapshot the log line count of every backend first.
+    $logLinesBefore = @{}
+    foreach ($cid in @(docker compose ps -q backend)) {
+        $count = docker exec $cid sh -c 'wc -l < /var/www/html/storage/logs/laravel.log' 2>$null
+        $logLinesBefore[$cid] = [int](($count | Out-String).Trim())
     }
 
     Write-Host "Testing $productsUrl"
@@ -189,38 +190,15 @@ try {
     }
     Write-Check "HTTP 304 response has no body."
 
-    if (-not (Test-Path -LiteralPath $logPath)) {
-        throw "Laravel log not found at '$logPath'; unable to verify Redis cache activity."
+    $newLogLines = @()
+    foreach ($cid in $logLinesBefore.Keys) {
+        $start = $logLinesBefore[$cid] + 1
+        $newLogLines += docker exec $cid sh -c "tail -n +$start /var/www/html/storage/logs/laravel.log" 2>$null
     }
-
-    $logFile = [System.IO.File]::Open(
-        $logPath,
-        [System.IO.FileMode]::Open,
-        [System.IO.FileAccess]::Read,
-        [System.IO.FileShare]::ReadWrite
-    )
-    try {
-        if ($logFile.Length -lt $logOffset) {
-            throw "Laravel log was truncated during the test; unable to verify Redis cache activity."
-        }
-
-        [void] $logFile.Seek($logOffset, [System.IO.SeekOrigin]::Begin)
-        $newLogBytes = [byte[]]::new([int] ($logFile.Length - $logOffset))
-        $bytesRead = 0
-        while ($bytesRead -lt $newLogBytes.Length) {
-            $count = $logFile.Read($newLogBytes, $bytesRead, $newLogBytes.Length - $bytesRead)
-            if ($count -eq 0) { break }
-            $bytesRead += $count
-        }
-    }
-    finally {
-        $logFile.Dispose()
-    }
-
-    $newLog = [System.Text.Encoding]::UTF8.GetString($newLogBytes, 0, $bytesRead)
+    $newLog = $newLogLines -join "`n"
     $cacheHitPattern = "\[CACHE HIT\].*products:v\d+:cat_all:page_1:per_$PerPage(?:\s|$)"
     if ($newLog -notmatch $cacheHitPattern) {
-        throw "No Redis CACHE HIT for this request was found in the Laravel log. Check that Compose uses Redis and the log is writable at '$logPath'."
+        throw "No Redis CACHE HIT for this request was found in the backend logs. Check that Compose uses Redis and that the replica logs are writable."
     }
     Write-Check "Laravel logged a Redis CACHE HIT for this product-list query."
 

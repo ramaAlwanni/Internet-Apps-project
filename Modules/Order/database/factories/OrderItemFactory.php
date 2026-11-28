@@ -3,9 +3,9 @@
 namespace Modules\Order\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\DB;
 use Modules\Order\Models\Order;
 use Modules\Order\Models\OrderItem;
-use Modules\Product\Models\Product;
 use RuntimeException;
 
 /**
@@ -26,7 +26,7 @@ class OrderItemFactory extends Factory
             throw new RuntimeException('Cannot create an order item without an existing order.');
         }
 
-        $product = Product::query()
+        $product = DB::table('products')
             ->inRandomOrder()
             ->first(['id', 'name', 'price']);
 

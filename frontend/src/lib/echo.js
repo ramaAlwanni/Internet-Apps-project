@@ -8,9 +8,13 @@ const scheme = import.meta.env.VITE_REVERB_SCHEME ?? "http";
 const forceTLS = scheme === "https";
 
 const wsHost = import.meta.env.VITE_REVERB_HOST ?? window.location.hostname;
-const wsPort = Number(import.meta.env.VITE_REVERB_PORT ?? (forceTLS ? 443 : 80));
+const wsPort = Number(
+    import.meta.env.VITE_REVERB_PORT ?? (forceTLS ? 443 : 80),
+);
 const wssPort = Number(
-  import.meta.env.VITE_REVERB_WSS_PORT ?? import.meta.env.VITE_REVERB_PORT ?? 443,
+    import.meta.env.VITE_REVERB_WSS_PORT ??
+        import.meta.env.VITE_REVERB_PORT ??
+        443,
 );
 
 /**
@@ -22,7 +26,7 @@ const wssPort = Number(
  * "/broadcasting/auth".
  */
 const authEndpoint =
-  import.meta.env.VITE_BROADCAST_AUTH_ENDPOINT ?? "/broadcasting/auth";
+    import.meta.env.VITE_BROADCAST_AUTH_ENDPOINT ?? "/broadcasting/auth";
 
 /**
  * Shared Laravel Echo instance configured for Laravel Reverb.
@@ -37,47 +41,50 @@ const authEndpoint =
  *  - a Sanctum SPA cookie/session setup (`credentials: "include"`)
  */
 export const echo = new Echo({
-  broadcaster: "reverb",
-  key: import.meta.env.VITE_REVERB_APP_KEY,
-  wsHost,
-  wsPort,
-  wssPort,
-  forceTLS,
-  enabledTransports: ["ws", "wss"],
-  disableStats: true,
-  authEndpoint,
-  authorizer: (channel) => ({
-    authorize: async (socketId, callback) => {
-      try {
-        const token = localStorage.getItem("token");
+    broadcaster: "reverb",
+    key: import.meta.env.VITE_REVERB_APP_KEY ?? "local",
 
-        const response = await fetch(authEndpoint, {
-          method: "POST",
-          // JWT requests do not need cookies. Fall back to cookies for a
-          // Sanctum session setup (also enable supports_credentials in CORS).
-          credentials: token ? "omit" : "include",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({
-            socket_id: socketId,
-            channel_name: channel.name,
-          }),
-        });
+    wsHost,
+    wsPort,
+    wssPort,
+    forceTLS,
+    enabledTransports: ["ws", "wss"],
+    disableStats: true,
+    authEndpoint,
+    authorizer: (channel) => ({
+        authorize: async (socketId, callback) => {
+            try {
+                const token = localStorage.getItem("token");
 
-        if (!response.ok) {
-          throw new Error(`Broadcast auth failed with status ${response.status}`);
-        }
+                const response = await fetch(authEndpoint, {
+                    method: "POST",
+                    // JWT requests do not need cookies. Fall back to cookies for a
+                    // Sanctum session setup (also enable supports_credentials in CORS).
+                    credentials: token ? "omit" : "include",
+                    headers: {
+                        Accept: "application/json",
+                        "Content-Type": "application/json",
+                        "X-Requested-With": "XMLHttpRequest",
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify({
+                        socket_id: socketId,
+                        channel_name: channel.name,
+                    }),
+                });
 
-        callback(null, await response.json());
-      } catch (error) {
-        callback(error, null);
-      }
-    },
-  }),
+                if (!response.ok) {
+                    throw new Error(
+                        `Broadcast auth failed with status ${response.status}`,
+                    );
+                }
+
+                callback(null, await response.json());
+            } catch (error) {
+                callback(error, null);
+            }
+        },
+    }),
 });
 
 export default echo;

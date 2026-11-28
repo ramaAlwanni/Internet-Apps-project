@@ -3,8 +3,8 @@
 namespace Modules\Order\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\DB;
 use Modules\Order\Models\Order;
-use Modules\User\Models\User;
 use RuntimeException;
 
 /**
@@ -19,7 +19,7 @@ class OrderFactory extends Factory
      */
     public function definition(): array
     {
-        $userId = User::query()->inRandomOrder()->value('id');
+        $userId = DB::table('users')->inRandomOrder()->value('id');
 
         if ($userId === null) {
             throw new RuntimeException('Cannot create an order without an existing user.');

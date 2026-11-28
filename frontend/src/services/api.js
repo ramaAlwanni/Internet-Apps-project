@@ -146,3 +146,15 @@ export const signoutApi = async () => {
     const response = await API.post("/sign-out");
     return response.data;
 };
+API.interceptors.response.use(
+    (response) => {
+        console.log(
+            `${response.config.method?.toUpperCase()} ${response.config.url}`,
+            "handled by:",
+            response.headers["x-backend-instance"],
+        );
+
+        return response;
+    },
+    (error) => Promise.reject(error),
+);
